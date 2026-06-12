@@ -31,7 +31,6 @@
   background: #ffffff;
   border-color: #e4e4e7;
 }
-[data-theme="light"] .left-panel-tenant-label,
 [data-theme="light"] .left-panel-category-label,
 [data-theme="light"] .side-panel-title,
 [data-theme="light"] .side-panel-collapsed-label,
@@ -47,7 +46,6 @@
 [data-theme="light"] .left-panel-item.active,
 [data-theme="light"] .left-panel-category-header.active,
 [data-theme="light"] .left-panel-sub-item.active { background: #e4e4e7; color: #18181b; }
-[data-theme="light"] .left-panel-tenant-select,
 [data-theme="light"] .tenant-config-input {
   background: #f4f4f5;
   border-color: #d4d4d8;

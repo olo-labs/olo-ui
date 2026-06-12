@@ -1,17 +1,25 @@
 import { useState, useEffect, type CSSProperties } from 'react'
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { TopBar } from './components/TopBar'
 import { OloLogo } from './components/OloLogo'
 import { LeftPanel } from './components/LeftPanel'
-import { ToolsPanel } from './components/ToolsPanel'
+import { BuilderSidePanel } from './components/builder/BuilderSidePanel'
 import { MainContent } from './components/MainContent'
 import { PropertiesPanel } from './components/PropertiesPanel'
 import { PanelResizeHandle } from './components/PanelResizeHandle'
 import { TenantConfigForm } from './components/TenantConfigForm'
+import { WorkflowConfigurationEditor } from './components/WorkflowConfigurationEditor'
+import { WorkflowGlobalProperties } from './components/WorkflowGlobalProperties'
+import { CanvasNodeProperties } from './components/canvas/CanvasNodeProperties'
+import { isCanvasNodePropertiesTarget } from './components/canvas/CanvasNodeProperties'
 import { getHealth } from './api/rest'
 import type { Tenant } from './types/tenant'
 import { useUIStore } from './store/ui'
 import { tenantConfigStore } from './store/tenantConfig'
+import { workflowConfigurationStore } from './store/workflowConfigurationStore'
+import { catalogStore } from './store/catalogStore'
+import { presetParametersForWorkflow } from './lib/catalogLookup'
+import { downloadWorkflowJson, readWorkflowFile } from './lib/workflowConfiguration'
 import {
   parsePath,
   buildPath,
@@ -20,13 +28,13 @@ import {
   parseQuery,
   parsedToPanelParams,
   DEFAULT_PATH,
-  getRunLevelDefaultSubId,
 } from './routes'
+import { getSubOption } from './types/layout'
 import type { SectionId } from './types/layout'
 import { isFeatureEnabled } from './config/features'
 import type { FeatureId } from './config/features'
 import { logEvent } from './lib/observability'
-import { getLastTenantId, setLastTenantId } from './lib/lastTenant'
+import { getLastTenantId } from './lib/lastTenant'
 
 const BACKEND_POLL_INTERVAL_MS = 2000
 
@@ -34,7 +42,6 @@ function App() {
   const [backendReady, setBackendReady] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
-  const [, setSearchParams] = useSearchParams()
 
   const {
     leftPanelExpanded,
@@ -46,16 +53,18 @@ function App() {
     sectionId,
     subId,
     runId,
-    tenantId,
     setRunId,
     setTenantId,
     setSectionSub,
   } = useUIStore()
 
-  const runSelected = !!runId && (sectionId === 'runtime' || sectionId === 'ledger')
-  const isTenantConfig = sectionId === 'configuration' && subId === 'tenant-configuration'
+  const isTenantAdmin = sectionId === 'administration' && subId === 'tenants'
+  const isWorkflowImportExport = sectionId === 'workflows' && subId === 'import-export'
+  const isWorkflowBuilder = sectionId === 'workflows' && subId === 'builder'
+  const showComponentsPanel = isWorkflowBuilder
+  const needsCatalog = isWorkflowBuilder || isWorkflowImportExport
+  const needsWorkflows = sectionId === 'workflows'
 
-  // URL → store sync: path, tenant, and panel query (enables deep links, back/forward, bookmarking)
   useEffect(() => {
     const pathname = location.pathname || '/'
     if (pathname === '/' || pathname === '') {
@@ -67,7 +76,6 @@ function App() {
       navigate(DEFAULT_PATH, { replace: true })
       return
     }
-    // Disabled section deep link: redirect to safe default
     if (!isFeatureEnabled(parsed.sectionId as FeatureId)) {
       navigate(DEFAULT_PATH, { replace: true })
       return
@@ -77,8 +85,11 @@ function App() {
     const q = parseQuery(location.search)
     setTenantId(q.tenantId)
     useUIStore.getState().setPanelStateFromUrl(q.menuExpanded, q.toolsExpanded, q.propsExpanded)
-    if (parsed.sectionId !== 'configuration' || parsed.subId !== 'tenant-configuration') {
+    if (parsed.sectionId !== 'administration' || parsed.subId !== 'tenants') {
       tenantConfigStore.getState().clearSelection()
+    }
+    if (parsed.sectionId !== 'workflows') {
+      workflowConfigurationStore.getState().clearSelection()
     }
   }, [location.pathname, location.search, location.key, navigate, setSectionSub, setRunId, setTenantId])
 
@@ -99,10 +110,22 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (isTenantConfig) {
+    if (isTenantAdmin) {
       tenantConfigStore.getState().loadTenants()
     }
-  }, [sectionId, subId])
+  }, [isTenantAdmin])
+
+  useEffect(() => {
+    if (needsCatalog && !catalogStore.getState().catalog && !catalogStore.getState().loading) {
+      catalogStore.getState().loadCatalog()
+    }
+  }, [needsCatalog])
+
+  useEffect(() => {
+    if (needsWorkflows) {
+      workflowConfigurationStore.getState().loadWorkflows()
+    }
+  }, [needsWorkflows])
 
   useEffect(() => {
     if (sectionId != null) {
@@ -110,7 +133,6 @@ function App() {
     }
   }, [sectionId, subId, runId])
 
-  // Default tenant when URL has none: use last from session (localStorage) or first in list
   const tenants = tenantConfigStore((s) => s.tenants)
   useEffect(() => {
     const q = parseQuery(location.search)
@@ -134,28 +156,15 @@ function App() {
 
   const handleSectionSubSelect = (sid: SectionId, sub: string) => {
     const params = parsedToPanelParams(q)
-    navigate(buildPathWithQuery(buildPath(sid, sub), { ...params, props: 0 }))
-  }
-
-  const handleTenantChange = (id: string) => {
-    setLastTenantId(id)
-    const params = parsedToPanelParams(q)
-    setSearchParams(
-      new URLSearchParams(buildQuery({ ...params, tenantId: id })),
-      { replace: true }
+    const subOption = getSubOption(sid, sub)
+    const openProps = (sid === 'administration' && sub === 'tenants') || sub === 'import-export'
+    navigate(
+      buildPathWithQuery(buildPath(sid, sub), {
+        ...params,
+        props: openProps ? params.props : 0,
+        tools: subOption?.componentsPanel ? 1 : params.tools,
+      }),
     )
-  }
-
-  const handleRunIdChange = (id: string) => {
-    if (!sectionId) return
-    const params = parsedToPanelParams(q)
-    if (id) {
-      const sub = runId ? subId : getRunLevelDefaultSubId(sectionId)
-      navigate(buildPathWithQuery(buildPath(sectionId, sub, id), params))
-    } else {
-      const listSub = sectionId === 'runtime' ? 'live-runs' : 'runs'
-      navigate(buildPathWithQuery(buildPath(sectionId, listSub), params))
-    }
   }
 
   const handleSelectTenant = (t: Tenant) => {
@@ -168,13 +177,54 @@ function App() {
     updatePanelQuery({ props: 1 })
   }
 
+  const handleSelectWorkflow = (fileName: string) => {
+    workflowConfigurationStore.getState().selectWorkflow(fileName)
+    updatePanelQuery({ props: 1 })
+  }
+
+  const handleImportWorkflowFile = async (file: File) => {
+    const document = await readWorkflowFile(file)
+    await workflowConfigurationStore.getState().importWorkflow(document, file.name)
+    updatePanelQuery({ props: 1 })
+  }
+
+  const handleExportWorkflow = () => {
+    const doc = workflowConfigurationStore.getState().exportSelected()
+    if (doc) {
+      downloadWorkflowJson(doc, workflowConfigurationStore.getState().selectedFileName ?? undefined)
+    }
+  }
+
   const handleToggleLeftPanel = () => updatePanelQuery({ menu: q.menuExpanded ? 0 : 1 })
-  const handleToggleToolsPanel = () => updatePanelQuery({ tools: q.toolsExpanded ? 0 : 1 })
+  const handleToggleComponentsPanel = () => updatePanelQuery({ tools: q.toolsExpanded ? 0 : 1 })
   const handleTogglePropertiesPanel = () => updatePanelQuery({ props: q.propsExpanded ? 0 : 1 })
 
   const tenantsLoading = tenantConfigStore((s) => s.tenantsLoading)
   const configSelectedTenant = tenantConfigStore((s) => s.configSelectedTenant)
   const configIsAddingNew = tenantConfigStore((s) => s.configIsAddingNew)
+
+  const workflows = workflowConfigurationStore((s) => s.workflows)
+  const workflowsLoading = workflowConfigurationStore((s) => s.loading)
+  const workflowsError = workflowConfigurationStore((s) => s.error)
+  const configurationRoot = workflowConfigurationStore((s) => s.configurationRoot)
+  const selectedWorkflowFile = workflowConfigurationStore((s) => s.selectedFileName)
+  const workflowDraft = workflowConfigurationStore((s) => s.draft)
+  const workflowDirty = workflowConfigurationStore((s) => s.dirty)
+  const selectedCanvasNodeId = workflowConfigurationStore((s) => s.selectedCanvasNodeId)
+  const selectedCanvasNode =
+    workflowDraft?.nodes?.find((n) => n.id === selectedCanvasNodeId) ?? null
+  const showCanvasNodeProperties =
+    isWorkflowBuilder
+    && selectedCanvasNode != null
+    && isCanvasNodePropertiesTarget(selectedCanvasNode)
+  const showWorkflowGlobalProperties =
+    isWorkflowBuilder && workflowDraft != null && selectedCanvasNode == null
+  const catalog = catalogStore((s) => s.catalog)
+  const workflowCatalogParameters = workflowDraft
+    ? presetParametersForWorkflow(catalog, workflowDraft)
+    : []
+
+  const showWorkflowProperties = isWorkflowImportExport || isWorkflowBuilder
 
   if (!backendReady) {
     return (
@@ -205,12 +255,8 @@ function App() {
         <LeftPanel
           expanded={leftPanelExpanded}
           onToggle={handleToggleLeftPanel}
-          tenantId={tenantId}
-          onTenantChange={handleTenantChange}
-          tenants={tenants}
           sectionId={sectionId}
           subId={subId}
-          runSelected={runSelected}
           onSectionSubSelect={handleSectionSubSelect}
         />
         <PanelResizeHandle
@@ -218,24 +264,14 @@ function App() {
           visible={leftPanelExpanded}
           onResize={(delta) => useUIStore.getState().setPanelWidthLeft(useUIStore.getState().panelWidthLeft + delta)}
         />
-        {!isTenantConfig && (
+        {showComponentsPanel && (
           <>
-            <ToolsPanel
+            <BuilderSidePanel
               expanded={toolsPanelExpanded}
-              onToggle={handleToggleToolsPanel}
-              sectionId={sectionId}
-              subId={subId}
-              runSelected={runSelected}
-              storeContext={
-                sectionId === 'configuration'
-                  ? { tenants, configSelectedTenant, tenantsLoading }
-                  : sectionId === 'runtime' || sectionId === 'ledger'
-                    ? { runId }
-                    : {}
-              }
+              onToggle={handleToggleComponentsPanel}
             />
             <PanelResizeHandle
-              panel="tools"
+              panel="components"
               visible={toolsPanelExpanded}
               onResize={(delta) => useUIStore.getState().setPanelWidthTools(useUIStore.getState().panelWidthTools + delta)}
             />
@@ -244,15 +280,21 @@ function App() {
         <MainContent
           sectionId={sectionId}
           subId={subId}
-          runSelected={runSelected}
-          runId={runId}
-          onRunIdChange={handleRunIdChange}
           tenants={tenants}
           tenantsLoading={tenantsLoading}
           configSelectedTenant={configSelectedTenant}
           onSelectTenant={handleSelectTenant}
           onAddNewTenant={handleAddNewTenant}
           onDeleteTenant={(id) => tenantConfigStore.getState().deleteTenant(id)}
+          workflows={workflows}
+          workflowsLoading={workflowsLoading}
+          workflowsError={workflowsError}
+          configurationRoot={configurationRoot}
+          selectedWorkflowFile={selectedWorkflowFile}
+          onSelectWorkflow={handleSelectWorkflow}
+          onImportWorkflowFile={handleImportWorkflowFile}
+          onExportWorkflow={handleExportWorkflow}
+          workflowExportDisabled={!workflowDraft}
         />
         <PanelResizeHandle
           panel="properties"
@@ -263,11 +305,52 @@ function App() {
           expanded={propertiesPanelExpanded}
           onToggle={handleTogglePropertiesPanel}
         >
-          {isTenantConfig ? (
+          {isTenantAdmin ? (
             <TenantConfigForm
               tenant={configSelectedTenant}
               isAddingNew={configIsAddingNew}
               onSave={(tenant) => tenantConfigStore.getState().saveTenant(tenant)}
+            />
+          ) : showCanvasNodeProperties && selectedCanvasNode ? (
+            <CanvasNodeProperties
+              workflow={workflowDraft!}
+              node={selectedCanvasNode}
+              dirty={workflowDirty}
+              onChange={(doc) => workflowConfigurationStore.getState().updateDraft(doc)}
+            />
+          ) : showWorkflowGlobalProperties ? (
+            <div className="tenant-config-form-inner workflow-config-editor">
+              <h2 className="tenant-config-form-title">{workflowDraft.label ?? workflowDraft.id}</h2>
+              <WorkflowGlobalProperties
+                workflow={workflowDraft}
+                onChange={(doc) => workflowConfigurationStore.getState().updateDraft(doc)}
+              />
+              <div className="tenant-config-form-actions tenant-config-form-actions-bottom">
+                <button
+                  type="button"
+                  className="tenant-config-btn danger"
+                  onClick={() => workflowConfigurationStore.getState().deleteSelected()}
+                >
+                  Delete
+                </button>
+                <button
+                  type="button"
+                  className="tenant-config-btn primary"
+                  onClick={() => workflowConfigurationStore.getState().saveDraft()}
+                  disabled={!workflowDirty}
+                >
+                  {workflowDirty ? 'Save changes' : 'Saved'}
+                </button>
+              </div>
+            </div>
+          ) : showWorkflowProperties ? (
+            <WorkflowConfigurationEditor
+              workflow={workflowDraft}
+              catalogParameters={workflowCatalogParameters}
+              dirty={workflowDirty}
+              onChange={(doc) => workflowConfigurationStore.getState().updateDraft(doc)}
+              onSave={() => workflowConfigurationStore.getState().saveDraft()}
+              onDelete={() => workflowConfigurationStore.getState().deleteSelected()}
             />
           ) : undefined}
         </PropertiesPanel>

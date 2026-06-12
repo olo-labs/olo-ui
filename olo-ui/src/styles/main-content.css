@@ -18,6 +18,10 @@
   flex-shrink: 0;
 }
 
+.main-content-section-emoji {
+  margin-right: 0.35rem;
+}
+
 .main-content-title {
   margin: 0;
   font-size: 1.1rem;

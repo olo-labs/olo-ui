@@ -15,6 +15,22 @@ repositories {
     mavenCentral()
 }
 
+def oloCoreDistCatalog = file('../../olo-mono/olo-core/dist/catalog')
+
+tasks.register('syncExtensionCatalog', Copy) {
+    description = 'Copy olo-core dist/catalog JSON for editor rendering (JSON only — no org.olo runtime deps)'
+    def oloCoreBuild = gradle.includedBuilds.find { it.name == 'olo-core-build' }
+    if (oloCoreBuild != null) {
+        dependsOn oloCoreBuild.task(':dist')
+    }
+    from(oloCoreDistCatalog)
+    into layout.buildDirectory.dir('resources/main/static/catalog')
+    include('*.json')
+    onlyIf { oloCoreDistCatalog.exists() }
+}
+
+processResources.dependsOn syncExtensionCatalog
+
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'

@@ -1,94 +1,279 @@
 /**
- * User-centric menu: Build, Run, Investigate, System.
- * Section IDs are stable for URLs (studio, runtime, ledger, configuration); labels are display-only.
+
+ * v1 product navigation — stable section IDs for URLs; labels are display-only.
+
  */
+
 export type SectionId =
-  | 'studio'   // Build
-  | 'runtime'  // Run
-  | 'ledger'   // Investigate
-  | 'configuration'  // System
+
+  | 'overview'
+
+  | 'workflows'
+
+  | 'executions'
+
+  | 'observability'
+
+  | 'extensions'
+
+  | 'administration'
+
+
+
+export type SectionStatus = 'available' | 'coming-soon' | 'partial'
+
+
 
 export interface SubOption {
+
   id: string
+
   label: string
-  /** Optional description for tooltip */
+
   description?: string
-  /** When set, sub-option is shown only when this feature flag is enabled (see config/features) */
+
+  status?: 'available' | 'coming-soon'
+
   featureId?: keyof typeof import('../config/features').features
-  /** Tool IDs to show in the Tools panel for this view (contextual tools). Resolved via tool registry. */
+
+  /** Show catalog Components panel (builder). */
+
+  componentsPanel?: boolean
+
+  /** Legacy contextual tool IDs (non-builder views). */
+
   toolIds?: string[]
+
 }
+
+
 
 export interface SectionConfig {
+
   id: SectionId
+
   label: string
-  /** Short subtitle and tooltip description for the category */
+
+  emoji: string
+
+  status: SectionStatus
+
   subtitle: string
-  /** Sub-options shown when category is expanded (or run-level options when run selected) */
+
   subOptions: SubOption[]
-  /** When a run is selected, show these instead of subOptions for Run / Investigate */
+
+  /** Future: run-level tabs when a run is selected (Executions, Observability). */
+
   runSelectedOptions?: SubOption[]
+
 }
 
+
+
 export const SECTIONS: SectionConfig[] = [
+
   {
-    id: 'studio',
-    label: 'Build',
-    subtitle: 'Create or modify pipelines',
-    subOptions: [
-      { id: 'canvas', label: 'Canvas', description: 'Design and edit pipelines', toolIds: ['shortcuts'] },
-      { id: 'versions', label: 'Versions', description: 'Pipeline version history', toolIds: ['shortcuts'] },
-      { id: 'validate', label: 'Validate', description: 'Validate pipeline config', toolIds: ['shortcuts'] },
-      { id: 'test-run', label: 'Test Run', description: 'Run a test execution', toolIds: ['quick-actions', 'shortcuts'] },
-      { id: 'schema', label: 'Schema', description: 'Schema definitions', toolIds: ['shortcuts'] },
-    ],
+
+    id: 'overview',
+
+    label: 'Overview',
+
+    emoji: '🏠',
+
+    status: 'coming-soon',
+
+    subtitle: 'Product dashboard',
+
+    subOptions: [],
+
   },
+
   {
-    id: 'runtime',
-    label: 'Run',
-    subtitle: 'What is currently happening?',
+
+    id: 'workflows',
+
+    label: 'Workflows',
+
+    emoji: '📋',
+
+    status: 'available',
+
+    subtitle: 'Design and manage workflows',
+
     subOptions: [
-      { id: 'live-runs', label: 'Live Runs', description: 'Active run list', toolIds: ['quick-actions', 'filters', 'search'] },
-      { id: 'queues', label: 'Queues', description: 'Execution queues', toolIds: ['filters', 'search'] },
-      { id: 'metrics', label: 'Metrics', description: 'Runtime metrics', toolIds: ['filters'] },
+
+      {
+
+        id: 'builder',
+
+        label: 'Builder',
+
+        description: 'Visual workflow editor',
+
+        status: 'available',
+
+        componentsPanel: true,
+
+      },
+
+      {
+
+        id: 'import-export',
+
+        label: 'Import / Export',
+
+        description: 'Import, export, and manage workflow JSON',
+
+        status: 'available',
+
+        featureId: 'workflowConfiguration',
+
+      },
+
+      {
+
+        id: 'templates',
+
+        label: 'Templates',
+
+        description: 'Workflow templates',
+
+        status: 'coming-soon',
+
+      },
+
+      {
+
+        id: 'versions',
+
+        label: 'Versions',
+
+        description: 'Workflow version history',
+
+        status: 'coming-soon',
+
+      },
+
     ],
-    runSelectedOptions: [
-      { id: 'overview', label: 'Overview', description: 'Run summary', toolIds: ['quick-actions', 'node-inspector', 'logs-preview'] },
-      { id: 'tree-view', label: 'Tree View', description: 'Execution tree', toolIds: ['node-inspector', 'logs-preview'] },
-      { id: 'timeline', label: 'Timeline', description: 'Execution timeline', toolIds: ['node-inspector'] },
-      { id: 'debug', label: 'Debug', description: 'Debug run', toolIds: ['quick-actions', 'node-inspector', 'logs-preview'] },
-      { id: 'compare', label: 'Compare', description: 'Compare runs', toolIds: ['shortcuts'] },
-    ],
+
   },
+
   {
-    id: 'ledger',
-    label: 'Investigate',
-    subtitle: 'What happened in the past?',
-    subOptions: [
-      { id: 'runs', label: 'Runs', description: 'Historical run list', toolIds: ['filters', 'search'] },
-      { id: 'replay', label: 'Replay', description: 'Replay execution', featureId: 'replay', toolIds: ['quick-actions'] },
-      { id: 'cost-analysis', label: 'Cost Analysis', description: 'Cost breakdown', featureId: 'costAnalysis', toolIds: ['filters'] },
-      { id: 'diff', label: 'Diff', description: 'Compare runs', toolIds: ['shortcuts'] },
-      { id: 'snapshots', label: 'Snapshots', description: 'State snapshots', toolIds: ['search'] },
-    ],
-    runSelectedOptions: [
-      { id: 'summary', label: 'Summary', description: 'Run summary', toolIds: ['node-inspector', 'logs-preview'] },
-      { id: 'execution-tree', label: 'Execution Tree', description: 'Execution tree', toolIds: ['node-inspector', 'logs-preview'] },
-      { id: 'time-travel', label: 'Time Travel', description: 'Time travel debug', toolIds: ['node-inspector'] },
-      { id: 'raw-events', label: 'Raw Events', description: 'Raw event log', toolIds: ['search', 'logs-preview'] },
-      { id: 'diff', label: 'Diff', description: 'Compare with another run', toolIds: ['shortcuts'] },
-    ],
+
+    id: 'executions',
+
+    label: 'Executions',
+
+    emoji: '⚡',
+
+    status: 'coming-soon',
+
+    subtitle: 'Live and recent runs',
+
+    subOptions: [],
+
   },
+
   {
-    id: 'configuration',
-    label: 'System',
-    subtitle: 'Configure environment',
-    subOptions: [
-      { id: 'tenant-configuration', label: 'Tenant Configuration', description: 'Manage tenants', featureId: 'tenantConfiguration', toolIds: ['search'] },
-      { id: 'environment-config', label: 'Environment', description: 'Per-environment settings', toolIds: ['shortcuts'] },
-      { id: 'secrets', label: 'Secrets', description: 'Secrets management', toolIds: [] },
-      { id: 'plugin-config', label: 'Plugins', description: 'Plugin settings', toolIds: ['search'] },
-      { id: 'global-settings', label: 'Global Settings', description: 'Global app settings', toolIds: ['shortcuts'] },
-    ],
+
+    id: 'observability',
+
+    label: 'Observability',
+
+    emoji: '📊',
+
+    status: 'coming-soon',
+
+    subtitle: 'Metrics, logs, and traces',
+
+    subOptions: [],
+
   },
+
+  {
+
+    id: 'extensions',
+
+    label: 'Extensions',
+
+    emoji: '🔌',
+
+    status: 'coming-soon',
+
+    subtitle: 'Plugins and integrations',
+
+    subOptions: [],
+
+  },
+
+  {
+
+    id: 'administration',
+
+    label: 'Administration',
+
+    emoji: '⚙️',
+
+    status: 'partial',
+
+    subtitle: 'Tenants and platform settings',
+
+    subOptions: [
+
+      {
+
+        id: 'tenants',
+
+        label: 'Tenants',
+
+        description: 'Manage tenants',
+
+        status: 'available',
+
+        featureId: 'tenantConfiguration',
+
+      },
+
+    ],
+
+  },
+
 ]
+
+
+
+export function getSection(sectionId: SectionId): SectionConfig | undefined {
+
+  return SECTIONS.find((s) => s.id === sectionId)
+
+}
+
+
+
+export function getSubOption(sectionId: SectionId, subId: string): SubOption | undefined {
+
+  const section = getSection(sectionId)
+
+  if (!section) return undefined
+
+  return section.subOptions.find((s) => s.id === subId)
+
+}
+
+
+
+export function sectionIsComingSoon(section: SectionConfig): boolean {
+
+  return section.status === 'coming-soon'
+
+}
+
+
+
+export function subOptionIsComingSoon(sub: SubOption): boolean {
+
+  return sub.status === 'coming-soon'
+
+}
+
+

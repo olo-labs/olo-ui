@@ -1,25 +1,90 @@
 # olo-ui docs
 
-Frontend-specific documentation lives here. For architecture and contributor guides, see the **repository root** [docs/](../../docs/) folder.
+Frontend-specific documentation for the **olo-ui** package (`olo-ui/olo-ui/`). Cross-cutting contributor guides live in the repository root [docs/](../../docs/) folder.
+
+---
 
 ## In this folder
 
 | Document | Description |
 |----------|-------------|
-| [DOCKERHUB-PAGE.md](DOCKERHUB-PAGE.md) | Copy-paste content for the Docker Hub repository description (combined image). |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System design: v1 navigation, four-panel builder, catalog, canvas, workflow JSON, olo-be API |
+| [DOCKERHUB-PAGE.md](DOCKERHUB-PAGE.md) | Copy-paste Docker Hub description for the combined image |
+
+---
+
+## Quick reference
+
+### What ships in v1
+
+| Area | Route | Capability |
+|------|-------|------------|
+| Workflows → Builder | `/workflows/builder` | Drag-and-drop graph canvas, variables, tools, hooks, child workflows, available agents |
+| Workflows → Import / Export | `/workflows/import-export` | List, import, export, save `olo-configuration` JSON |
+| Administration → Tenants | `/administration/tenants` | Tenant CRUD |
+| Overview, Executions, Observability, Extensions | `/overview`, … | Coming soon placeholders |
+
+### Local run
+
+```powershell
+# Backend (port 8082)
+cd olo-ui\olo-be
+.\gradlew.bat bootRun
+
+# Frontend (port 3000, proxies /api)
+cd olo-ui\olo-ui
+npm install
+npm run dev
+```
+
+Open `http://localhost:3000` → defaults to **Workflows → Builder**.
+
+### Workflow editor workflow
+
+1. **Import / Export** — select or import `agent.json` (or any preset from `olo.configuration.directory`).
+2. **Builder** — drag catalog nodes, connect edges, enable tools/hooks/agents in the Builder panel.
+3. **Properties** — edit catalog-matched workflow parameters (temperature, model, etc.).
+4. **Save** — writes back to the configuration folder (Drive-synced if configured).
+
+### Key dependencies
+
+- **React 18** + **Vite** — UI shell
+- **@xyflow/react** — workflow graph canvas
+- **Zustand** — domain stores
+- **react-router-dom** — URL navigation
+
+### Tests
+
+```powershell
+cd olo-ui\olo-ui
+npm run test
+```
+
+---
 
 ## Root docs (shared)
 
-From repo root, [docs/](../../docs/) includes:
+From [docs/](../../docs/):
 
-- **ENVIRONMENT.md** — environment variables (how to use in local, Docker, Compose); full reference for olo-be and combined image
-- **ARCHITECTURE.md** — state philosophy, store vs local state, store creation guidelines
-- **DOMAIN_BOUNDARIES.md** — runContext rules, domain boundaries, cross-domain rules
-- **EXTENSIBILITY.md** — extension API, feature flags, governance
-- **LAYOUT_CONTRACT.md** — panel roles (Tools, Properties, Main), contextual tools
-- **PERFORMANCE.md** — virtualization and list size rules
-- **STABILITY.md** — versioning and deprecation
-- **TEST_STRATEGY.md** — stores, forms, routing
-- **UI-UX-AND-IMPLEMENTATION.md** — UI/UX and implementation notes
+| Document | Topic |
+|----------|-------|
+| [ARCHITECTURE.md](../../docs/ARCHITECTURE.md) | Store rules, naming, state flow |
+| [ENVIRONMENT.md](../../docs/ENVIRONMENT.md) | Env vars (local, Docker, Compose) |
+| [LAYOUT_CONTRACT.md](../../docs/LAYOUT_CONTRACT.md) | Panel roles (Nav, Builder, Main, Properties) |
+| [DOMAIN_BOUNDARIES.md](../../docs/DOMAIN_BOUNDARIES.md) | Cross-domain rules, runContext |
+| [EXTENSIBILITY.md](../../docs/EXTENSIBILITY.md) | Feature flags, extension API |
+| [TEST_STRATEGY.md](../../docs/TEST_STRATEGY.md) | Testing conventions |
+| [STABILITY.md](../../docs/STABILITY.md) | API versioning |
+| [DOCKERHUB-PAGE.md](../../docs/DOCKERHUB-PAGE.md) | Canonical Docker Hub text (repo root) |
 
-See [olo-ui/README.md](../README.md) for run and build instructions.
+---
+
+## Related paths (monorepo)
+
+| Path | Role |
+|------|------|
+| `olo-mono/olo-core/dist/catalog/` | Studio catalog JSON (nodes, tools, hooks, presets) |
+| `olo-mono/olo-definition/olo-configuration/` | Default workflow preset JSON |
+| `olo-ui/olo-be/` | Spring Boot API serving catalog + configuration folder |
+
+See [olo-ui/README.md](../README.md) for Gradle build and Storybook.

@@ -14,6 +14,8 @@
     "lint": "eslint src/components src/store"
   },
   "dependencies": {
+    "@xyflow/react": "^12.11.0",
+    "emoji-picker-react": "^4.19.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^7.13.1",

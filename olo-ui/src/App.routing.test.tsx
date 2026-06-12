@@ -6,7 +6,11 @@ import App from './App'
 vi.mock('./api/rest', () => ({
   getHealth: vi.fn().mockResolvedValue({ status: 'UP', service: 'olo-be' }),
   getTenants: vi.fn().mockResolvedValue([]),
+  getCatalog: vi.fn().mockResolvedValue({ schemaVersion: '1.0', nodes: [] }),
+  listWorkflowConfigurations: vi.fn().mockResolvedValue([]),
+  getConfigurationRoot: vi.fn().mockResolvedValue({ directory: '/tmp' }),
 }))
+
 vi.mock('./config/features', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./config/features')>()
   return {
@@ -21,34 +25,47 @@ describe('App routing integration', () => {
   beforeEach(() => {
     vi.mocked(isFeatureEnabled).mockImplementation((id) => {
       const defaults: Record<string, boolean> = {
-        studio: true,
-        runtime: true,
-        ledger: true,
-        configuration: true,
+        workflows: true,
+        overview: true,
+        executions: true,
+        observability: true,
+        extensions: true,
+        administration: true,
       }
       return defaults[id as string] ?? true
     })
   })
 
-  it('redirects to default path when section is disabled (e.g. ledger off)', async () => {
-    vi.mocked(isFeatureEnabled).mockImplementation((id) => id !== 'ledger')
+  it('redirects to default path when section is disabled', async () => {
+    vi.mocked(isFeatureEnabled).mockImplementation((id) => id !== 'executions')
     render(
-      <MemoryRouter initialEntries={['/ledger/runs']}>
+      <MemoryRouter initialEntries={['/executions']}>
         <App />
-      </MemoryRouter>
+      </MemoryRouter>,
     )
-    const heading = await screen.findByRole('heading', { name: /Build.*Canvas/i }, { timeout: 3000 })
+    const heading = await screen.findByRole('heading', { name: /Workflows.*Builder/i }, { timeout: 3000 })
     expect(heading).toBeTruthy()
   })
 
-  it('renders run-level deep link and syncs store (tree-view + tenant query)', async () => {
+  it('renders workflows builder deep link', async () => {
     vi.mocked(isFeatureEnabled).mockReturnValue(true)
     render(
-      <MemoryRouter initialEntries={['/runtime/run/123/tree-view?tenant=abc']}>
+      <MemoryRouter initialEntries={['/workflows/builder?tenant=abc']}>
         <App />
-      </MemoryRouter>
+      </MemoryRouter>,
     )
-    const heading = await screen.findByRole('heading', { name: /Run.*Tree View/i }, { timeout: 3000 })
+    const heading = await screen.findByRole('heading', { name: /Workflows.*Builder/i }, { timeout: 3000 })
     expect(heading).toBeTruthy()
+  })
+
+  it('renders coming soon for overview', async () => {
+    vi.mocked(isFeatureEnabled).mockReturnValue(true)
+    render(
+      <MemoryRouter initialEntries={['/overview']}>
+        <App />
+      </MemoryRouter>,
+    )
+    const badge = await screen.findByText('Coming Soon', {}, { timeout: 3000 })
+    expect(badge).toBeTruthy()
   })
 })

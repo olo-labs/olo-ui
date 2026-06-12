@@ -2,7 +2,7 @@ import { useCallback, useRef } from 'react'
 
 export interface PanelResizeHandleProps {
   /** Which panel this handle resizes (left = left edge of left panel, etc.) */
-  panel: 'left' | 'tools' | 'properties'
+  panel: 'left' | 'tools' | 'components' | 'properties'
   onResize: (deltaPx: number) => void
   /** Optional: hide when panel is collapsed (no drag) */
   visible?: boolean

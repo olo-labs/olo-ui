@@ -2,32 +2,44 @@ import type { SectionId } from './types/layout'
 import { SECTIONS } from './types/layout'
 
 export const VALID_SECTION_IDS: SectionId[] = [
-  'studio',
-  'runtime',
-  'ledger',
-  'configuration',
+  'overview',
+  'workflows',
+  'executions',
+  'observability',
+  'extensions',
+  'administration',
 ]
 
 function isSectionId(s: string): s is SectionId {
   return VALID_SECTION_IDS.includes(s as SectionId)
 }
 
-/** Default subId when only section is in path (e.g. /studio -> canvas) */
+function getSection(sectionId: SectionId) {
+  return SECTIONS.find((s) => s.id === sectionId)
+}
+
+/** Default subId when only section is in path (e.g. /workflows → builder). */
 export function getDefaultSubId(sectionId: SectionId): string {
-  const section = SECTIONS.find((s) => s.id === sectionId)
+  const section = getSection(sectionId)
   const options = section?.subOptions ?? []
   return options[0]?.id ?? ''
 }
 
-/** Return list-view subId for runtime/ledger when run path is missing or invalid. */
+function supportsRunLevelRoutes(sectionId: SectionId): boolean {
+  const section = getSection(sectionId)
+  return Boolean(section?.runSelectedOptions?.length)
+}
+
+/** Return list-view subId when run path is missing or invalid. */
 function getListSubId(sectionId: SectionId): string {
-  return sectionId === 'runtime' ? 'live-runs' : sectionId === 'ledger' ? 'runs' : getDefaultSubId(sectionId)
+  return getDefaultSubId(sectionId)
 }
 
 function isValidSubId(sectionId: SectionId, subId: string, forRunLevel: boolean): boolean {
-  const section = SECTIONS.find((s) => s.id === sectionId)
+  const section = getSection(sectionId)
   if (!section) return false
   const options = forRunLevel ? (section.runSelectedOptions ?? []) : (section.subOptions ?? [])
+  if (options.length === 0) return subId === ''
   return options.some((o) => o.id === subId)
 }
 
@@ -39,8 +51,9 @@ export interface ParsedPath {
 
 /**
  * Parse pathname to navigation state.
- * - Invalid sub-option falls back to default (or run-level default).
- * - Run path with missing/empty runId falls back to list view (e.g. /runtime/live-runs).
+ * - Sections without sub-options use empty subId (e.g. /overview).
+ * - Invalid sub-option falls back to default.
+ * - Run paths supported when section defines runSelectedOptions (future Executions).
  */
 export function parsePath(pathname: string): ParsedPath | null {
   const segments = pathname.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean)
@@ -49,11 +62,9 @@ export function parsePath(pathname: string): ParsedPath | null {
   const sectionId = segments[0]
   if (!isSectionId(sectionId)) return null
 
-  // /:sectionId/run/:runId/:subId — run-level route
-  if (segments[1] === 'run') {
+  if (segments[1] === 'run' && supportsRunLevelRoutes(sectionId)) {
     const runIdRaw = segments[2]
     const subIdRaw = segments[3]
-    // Missing runId: /runtime/run//overview or /runtime/run/overview (only 3 segments) -> list view
     if (segments.length < 4 || !runIdRaw || runIdRaw.trim() === '') {
       return {
         sectionId,
@@ -66,7 +77,6 @@ export function parsePath(pathname: string): ParsedPath | null {
     return { sectionId, subId, runId: runIdRaw }
   }
 
-  // /:sectionId/:subId?
   const subIdRaw = segments[1] ?? getDefaultSubId(sectionId)
   const defaultSub = getDefaultSubId(sectionId)
   const subId = isValidSubId(sectionId, subIdRaw, false) ? subIdRaw : defaultSub
@@ -75,28 +85,32 @@ export function parsePath(pathname: string): ParsedPath | null {
 
 /**
  * Build path for navigation. Use for deep links and browser history.
- * For run-level views (runtime/ledger with runId), use runId; otherwise pass null.
  */
 export function buildPath(
   sectionId: SectionId,
   subId: string,
-  runId: string | null = null
+  runId: string | null = null,
 ): string {
-  if (runId && (sectionId === 'runtime' || sectionId === 'ledger')) {
+  if (runId && supportsRunLevelRoutes(sectionId)) {
     return `/${sectionId}/run/${encodeURIComponent(runId)}/${encodeURIComponent(subId)}`
+  }
+  const section = getSection(sectionId)
+  const hasSubs = (section?.subOptions?.length ?? 0) > 0
+  if (!hasSubs || !subId) {
+    return `/${sectionId}`
   }
   return `/${sectionId}/${encodeURIComponent(subId)}`
 }
 
-/** Default run-level subId when opening a run (e.g. Overview for runtime, Summary for ledger). */
+/** Default run-level subId when opening a run (future Executions / Observability). */
 export function getRunLevelDefaultSubId(sectionId: SectionId): string {
-  const section = SECTIONS.find((s) => s.id === sectionId)
+  const section = getSection(sectionId)
   const options = section?.runSelectedOptions ?? []
   return options[0]?.id ?? 'overview'
 }
 
 /** Root path for app; redirect here when path is invalid or "/" */
-export const DEFAULT_PATH = '/studio/canvas'
+export const DEFAULT_PATH = '/workflows/builder'
 
 /** Panel state in query: menu=0 collapsed, menu=1 expanded; same for tools, props. */
 export type PanelQuery = { menu?: 0 | 1; tools?: 0 | 1; props?: 0 | 1 }
@@ -108,10 +122,6 @@ export interface ParsedQuery {
   propsExpanded: boolean
 }
 
-/**
- * Parse search string to panel + tenant state.
- * Defaults: menu expanded (true), tools and props collapsed (false).
- */
 export function parseQuery(search: string): ParsedQuery {
   const params = new URLSearchParams(search)
   return {
@@ -122,10 +132,6 @@ export function parseQuery(search: string): ParsedQuery {
   }
 }
 
-/**
- * Build query string for panel state and tenant.
- * Always outputs menu, tools, props (readable). Tenant only when set.
- */
 export function buildQuery(params: {
   tenantId?: string
   menu: 0 | 1
@@ -140,7 +146,6 @@ export function buildQuery(params: {
   return p.toString()
 }
 
-/** Current panel state from ParsedQuery for buildQuery. */
 export function parsedToPanelParams(q: ParsedQuery): { tenantId: string; menu: 0 | 1; tools: 0 | 1; props: 0 | 1 } {
   return {
     tenantId: q.tenantId,
@@ -150,24 +155,15 @@ export function parsedToPanelParams(q: ParsedQuery): { tenantId: string; menu: 0
   }
 }
 
-/**
- * Build pathname + query for navigation. Preserves tenant and panel state in URL.
- */
 export function buildPathWithQuery(
   pathname: string,
-  params: { tenantId?: string; menu: 0 | 1; tools: 0 | 1; props: 0 | 1 }
+  params: { tenantId?: string; menu: 0 | 1; tools: 0 | 1; props: 0 | 1 },
 ): string {
   const q = buildQuery(params)
   return pathname + (q ? '?' + q : '')
 }
 
-/**
- * Build pathname + tenant query only (legacy). Prefer buildPathWithQuery with full panel state.
- */
-export function buildPathWithTenant(
-  pathname: string,
-  tenantId: string
-): string {
+export function buildPathWithTenant(pathname: string, tenantId: string): string {
   const search = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : ''
   return pathname + search
 }

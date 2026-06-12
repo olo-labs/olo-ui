@@ -1,0 +1,410 @@
+.studio-canvas {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0;
+}
+
+.main-content-body:has(.studio-canvas) {
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content:has(.studio-canvas) .main-content-header {
+  flex-shrink: 0;
+}
+
+.workflow-canvas {
+  position: relative;
+  flex: 1;
+  min-height: 320px;
+  height: 100%;
+  border-top: 1px solid var(--border, #27272a);
+}
+
+.workflow-canvas-toolbar {
+  position: absolute;
+  top: 0.65rem;
+  left: 0.65rem;
+  right: 0.65rem;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  pointer-events: none;
+}
+
+.workflow-canvas-toolbar-left,
+.workflow-canvas-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  pointer-events: auto;
+}
+
+.workflow-canvas-select-wrap {
+  margin: 0;
+}
+
+.workflow-canvas-select {
+  min-width: 10rem;
+  max-width: 16rem;
+  padding: 0.35rem 1.75rem 0.35rem 0.55rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #fafafa;
+  background: rgba(24, 24, 27, 0.92);
+  border: 1px solid #3f3f46;
+  border-radius: 6px;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.45rem center;
+}
+
+.workflow-canvas-select:hover:not(:disabled) {
+  border-color: #52525b;
+}
+
+.workflow-canvas-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.workflow-canvas-toolbar-emoji {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.workflow-canvas-save-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid #3f3f46;
+  border-radius: 6px;
+  background: rgba(24, 24, 27, 0.92);
+  color: #a1a1aa;
+  cursor: pointer;
+}
+
+.workflow-canvas-save-btn svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.workflow-canvas-save-btn:hover:not(:disabled) {
+  color: #fafafa;
+  border-color: #52525b;
+  background: #27272a;
+}
+
+.workflow-canvas-save-btn.dirty:not(:disabled) {
+  color: #93c5fd;
+  border-color: #2563eb;
+}
+
+.workflow-canvas-save-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.workflow-canvas-save-dot {
+  position: absolute;
+  top: 0.2rem;
+  right: 0.2rem;
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 50%;
+  background: #3b82f6;
+}
+
+.workflow-canvas-toolbar-error {
+  font-size: 0.7rem;
+  color: #fca5a5;
+  max-width: 8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.workflow-canvas .react-flow {
+  width: 100%;
+  height: 100%;
+  background: #09090b;
+}
+
+.workflow-canvas-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem 2rem;
+  color: var(--text-muted, #a1a1aa);
+  font-size: 0.9rem;
+}
+
+.workflow-canvas-minimap {
+  border: 1px solid #3f3f46;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.catalog-flow-node {
+  position: relative;
+  min-width: 160px;
+  max-width: 220px;
+  padding: 0.5rem 0.65rem 1.25rem;
+  background: #18181b;
+  border: 1px solid #3f3f46;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  font-size: 0.8rem;
+}
+
+.catalog-flow-node.selected {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+
+.catalog-flow-node-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.catalog-flow-node-emoji {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.catalog-flow-node-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.catalog-flow-node-label {
+  font-weight: 600;
+  color: #fafafa;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.catalog-flow-node-type {
+  font-size: 0.65rem;
+  color: #71717a;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.catalog-flow-node-id {
+  position: absolute;
+  bottom: 0.25rem;
+  left: 0.5rem;
+  font-size: 0.6rem;
+  color: #52525b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.catalog-flow-handle {
+  width: 8px;
+  height: 8px;
+  background: #3b82f6;
+  border: 2px solid #18181b;
+}
+
+.catalog-flow-handle-input {
+  background: #22c55e;
+}
+
+.catalog-flow-handle-output {
+  background: #3b82f6;
+}
+
+.components-panel-item.draggable {
+  cursor: grab;
+}
+
+.components-panel-item.draggable:active {
+  cursor: grabbing;
+}
+
+.canvas-node-properties {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.canvas-node-properties-hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #a1a1aa;
+  line-height: 1.45;
+}
+
+.canvas-node-properties-meta {
+  margin: 0;
+  font-size: 0.72rem;
+  color: #71717a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.canvas-node-properties-dirty {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #93c5fd;
+}
+
+.canvas-node-variable-list {
+  margin-top: 0.25rem;
+}
+
+.canvas-node-select-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: #a1a1aa;
+}
+
+.canvas-node-select-field .workflow-canvas-select {
+  max-width: none;
+  width: 100%;
+}
+
+.catalog-flow-node-tooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 0.45rem);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 8rem;
+  max-width: 14rem;
+  padding: 0.4rem 0.55rem;
+  border: 1px solid #3f3f46;
+  border-radius: 6px;
+  background: rgba(9, 9, 11, 0.96);
+  color: #e4e4e7;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  white-space: normal;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 6;
+  transition: opacity 0.12s ease;
+}
+
+.catalog-flow-node:hover .catalog-flow-node-tooltip,
+.catalog-flow-node:focus-within .catalog-flow-node-tooltip {
+  opacity: 1;
+}
+
+.catalog-flow-node-tooltip span:first-child {
+  font-weight: 600;
+  color: #fafafa;
+}
+
+.catalog-flow-edge-label {
+  position: absolute;
+  pointer-events: all;
+}
+
+.catalog-flow-edge-hit {
+  display: block;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  background: transparent;
+  cursor: default;
+}
+
+.catalog-flow-edge-tooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 0.35rem);
+  transform: translateX(-50%);
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #3f3f46;
+  border-radius: 6px;
+  background: rgba(9, 9, 11, 0.96);
+  color: #e4e4e7;
+  font-size: 0.7rem;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  z-index: 5;
+}
+
+.catalog-flow-edge-label:hover .catalog-flow-edge-tooltip {
+  opacity: 1;
+}
+
+.canvas-context-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+}
+
+.canvas-context-menu {
+  position: fixed;
+  z-index: 21;
+  min-width: 9rem;
+  padding: 0.25rem;
+  border: 1px solid #3f3f46;
+  border-radius: 8px;
+  background: #18181b;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.canvas-context-item {
+  display: block;
+  width: 100%;
+  padding: 0.45rem 0.65rem;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #e4e4e7;
+  font-size: 0.8rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.canvas-context-item:hover:not(.disabled) {
+  background: #27272a;
+}
+
+.canvas-context-item.danger {
+  color: #fca5a5;
+}
+
+.canvas-context-item.disabled {
+  color: #71717a;
+  cursor: default;
+}

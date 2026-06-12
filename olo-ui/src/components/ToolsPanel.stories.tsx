@@ -11,7 +11,10 @@ const meta: Meta<typeof ToolsPanel> = {
   argTypes: {
     expanded: { control: 'boolean' },
     onToggle: { action: 'toggle' },
-    sectionId: { control: 'select', options: ['studio', 'runtime', 'ledger', 'configuration', null] },
+    sectionId: {
+      control: 'select',
+      options: ['overview', 'workflows', 'executions', 'observability', 'extensions', 'administration', null],
+    },
     subId: { control: 'text' },
     runSelected: { control: 'boolean' },
   },
@@ -30,8 +33,8 @@ export const Collapsed: Story = {
   args: {
     ...base,
     expanded: false,
-    sectionId: 'studio',
-    subId: 'canvas',
+    sectionId: 'workflows',
+    subId: 'import-export',
     runSelected: false,
   },
 }
@@ -40,31 +43,20 @@ export const Expanded: Story = {
   args: {
     ...base,
     expanded: true,
-    sectionId: 'studio',
-    subId: 'canvas',
+    sectionId: 'workflows',
+    subId: 'import-export',
     runSelected: false,
   },
 }
 
-export const RuntimeLiveRuns: Story = {
+export const AdministrationTenants: Story = {
   args: {
     ...base,
     expanded: true,
-    sectionId: 'runtime',
-    subId: 'live-runs',
+    sectionId: 'administration',
+    subId: 'tenants',
     runSelected: false,
-    storeContext: { runId: '' },
-  },
-}
-
-export const RuntimeRunOverview: Story = {
-  args: {
-    ...base,
-    expanded: true,
-    sectionId: 'runtime',
-    subId: 'overview',
-    runSelected: true,
-    storeContext: { runId: 'run-123' },
+    storeContext: { tenants: [], tenantsLoading: false },
   },
 }
 
@@ -72,8 +64,8 @@ export const NoToolsForView: Story = {
   args: {
     ...base,
     expanded: true,
-    sectionId: 'configuration',
-    subId: 'secrets',
+    sectionId: 'overview',
+    subId: '',
     runSelected: false,
     storeContext: {},
   },

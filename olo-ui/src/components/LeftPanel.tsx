@@ -1,20 +1,18 @@
-import { useState } from 'react'
-import { tenantDisplayName } from '../lib/tenantDisplay'
-import type { Tenant } from '../types/tenant'
-import { type SectionConfig, type SectionId } from '../types/layout'
+import { useEffect, useState } from 'react'
+import {
+  type SectionConfig,
+  type SectionId,
+  sectionIsComingSoon,
+  subOptionIsComingSoon,
+} from '../types/layout'
 import { useVisibleSections } from '../hooks/useFeature'
 import { isFeatureEnabled } from '../config/features'
 
 export interface LeftPanelProps {
   expanded: boolean
   onToggle: () => void
-  tenantId: string
-  onTenantChange: (id: string) => void
-  /** Tenants for dropdown; supplied by App from store (no API calls in components). */
-  tenants: Tenant[]
   sectionId: SectionId | null
   subId: string
-  runSelected: boolean
   onSectionSubSelect: (sectionId: SectionId, subId: string) => void
 }
 
@@ -23,17 +21,19 @@ type MenuContextMenu = { x: number; y: number; targetSectionId: SectionId | null
 export function LeftPanel({
   expanded,
   onToggle,
-  tenantId,
-  onTenantChange,
-  tenants,
   sectionId,
   subId,
-  runSelected,
   onSectionSubSelect,
 }: LeftPanelProps) {
-  const [expandedCategories, setExpandedCategories] = useState<Set<SectionId>>(new Set())
+  const [expandedCategories, setExpandedCategories] = useState<Set<SectionId>>(new Set(['workflows']))
   const [menuContext, setMenuContext] = useState<MenuContextMenu | null>(null)
   const sections = useVisibleSections()
+
+  useEffect(() => {
+    if (sectionId) {
+      setExpandedCategories((prev) => new Set(prev).add(sectionId))
+    }
+  }, [sectionId])
 
   const toggleCategory = (id: SectionId) => {
     setExpandedCategories((prev) => {
@@ -68,35 +68,27 @@ export function LeftPanel({
   }
   const closeMenuContext = () => setMenuContext(null)
 
-  const getSubOptions = (section: SectionConfig) => {
-    const list =
-      runSelected &&
-      (section.id === 'runtime' || section.id === 'ledger') &&
-      section.runSelectedOptions?.length
-        ? section.runSelectedOptions
-        : section.subOptions
-    return list.filter((sub) => !sub.featureId || isFeatureEnabled(sub.featureId as import('../config/features').FeatureId))
+  const getSubOptions = (section: SectionConfig) =>
+    section.subOptions.filter(
+      (sub) => !sub.featureId || isFeatureEnabled(sub.featureId as import('../config/features').FeatureId),
+    )
+
+  const handleSectionClick = (section: SectionConfig) => {
+    const subs = getSubOptions(section)
+    if (subs.length > 0) {
+      toggleCategory(section.id)
+      if (sectionId !== section.id) {
+        onSectionSubSelect(section.id, subs[0].id)
+      }
+      return
+    }
+    onSectionSubSelect(section.id, '')
   }
 
   return (
     <aside className={`left-panel ${expanded ? 'expanded' : 'collapsed'}`}>
       {expanded && (
         <div className="left-panel-inner">
-          <div className="left-panel-tenant">
-            <label className="left-panel-tenant-label">Tenant</label>
-            <select
-              className="left-panel-tenant-select"
-              value={tenantId}
-              onChange={(e) => onTenantChange(e.target.value)}
-            >
-              <option value="">Select tenant</option>
-              {tenants.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {tenantDisplayName(t)}
-                </option>
-              ))}
-            </select>
-          </div>
           <nav
             className="left-panel-menu"
             onContextMenu={(e) => handleMenuContextMenu(e, null)}
@@ -105,23 +97,33 @@ export function LeftPanel({
               const isCategoryExpanded = expandedCategories.has(section.id)
               const subOptions = getSubOptions(section)
               const hasSubs = subOptions.length > 0
-              const categoryTooltip = `${section.label}: ${section.subtitle}`
+              const isActiveSection =
+                sectionId === section.id &&
+                (!hasSubs || subOptions.some((s) => s.id === subId))
+              const comingSoon = sectionIsComingSoon(section)
 
               return (
                 <div key={section.id} className="left-panel-category">
                   <button
                     type="button"
-                    className={`left-panel-category-header ${isCategoryExpanded ? 'expanded' : ''} ${sectionId === section.id && (!hasSubs || getSubOptions(section).some((s) => s.id === subId)) ? 'active' : ''}`}
-                    onClick={() => (hasSubs ? toggleCategory(section.id) : onSectionSubSelect(section.id, ''))}
+                    className={`left-panel-category-header ${isCategoryExpanded ? 'expanded' : ''} ${isActiveSection ? 'active' : ''}`}
+                    onClick={() => handleSectionClick(section)}
                     onContextMenu={(e) => handleMenuContextMenu(e, section.id)}
-                    aria-expanded={isCategoryExpanded}
-                    title={categoryTooltip}
+                    aria-expanded={hasSubs ? isCategoryExpanded : undefined}
+                    title={section.subtitle}
                   >
                     <span className="left-panel-category-chevron">
                       {hasSubs ? (isCategoryExpanded ? '▼' : '▶') : ''}
                     </span>
+                    <span className="left-panel-category-emoji" aria-hidden>
+                      {section.emoji}
+                    </span>
                     <span className="left-panel-category-label">{section.label}</span>
-                    <span className="left-panel-category-subtitle">{section.subtitle}</span>
+                    {comingSoon ? (
+                      <span className="left-panel-soon-badge">Soon</span>
+                    ) : section.status === 'partial' ? (
+                      <span className="left-panel-partial-badge">Partial</span>
+                    ) : null}
                   </button>
                   {hasSubs && isCategoryExpanded && (
                     <ul className="left-panel-sub-list">
@@ -134,6 +136,9 @@ export function LeftPanel({
                             title={sub.description ?? sub.label}
                           >
                             {sub.label}
+                            {subOptionIsComingSoon(sub) ? (
+                              <span className="left-panel-soon-badge small">Soon</span>
+                            ) : null}
                           </button>
                         </li>
                       ))}

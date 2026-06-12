@@ -12,14 +12,14 @@ describe('UI store', () => {
 
   describe('setSectionSub', () => {
     it('updates sectionId and subId', () => {
-      useUIStore.getState().setSectionSub('studio', 'canvas')
-      expect(useUIStore.getState().sectionId).toBe('studio')
-      expect(useUIStore.getState().subId).toBe('canvas')
+      useUIStore.getState().setSectionSub('workflows', 'builder')
+      expect(useUIStore.getState().sectionId).toBe('workflows')
+      expect(useUIStore.getState().subId).toBe('builder')
     })
 
     it('does not change panel state (panel state is URL-driven)', () => {
       useUIStore.setState({ propertiesPanelExpanded: true })
-      useUIStore.getState().setSectionSub('studio', 'canvas')
+      useUIStore.getState().setSectionSub('workflows', 'builder')
       expect(useUIStore.getState().propertiesPanelExpanded).toBe(true)
     })
   })

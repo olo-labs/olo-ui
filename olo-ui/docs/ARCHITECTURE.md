@@ -1,0 +1,415 @@
+# Olo UI — Architecture
+
+This document describes how **olo-ui** (the React frontend) is structured, how it talks to **olo-be** (the Spring Boot API), and how it integrates with **olo-core** catalog and **olo-configuration** workflow presets.
+
+For contributor conventions (state flow, store rules, naming), see the repository root [ARCHITECTURE.md](../../docs/ARCHITECTURE.md). This document focuses on the frontend package and its immediate boundaries.
+
+---
+
+## 1. Purpose
+
+**olo-ui** is the operator console for Olo. v1 navigation:
+
+| Section | Route | Status |
+|---------|-------|--------|
+| **Overview** | `/overview` | Coming soon |
+| **Workflows** | `/workflows/builder`, `/workflows/import-export` | **Primary product** — graph editor + olo-configuration |
+| **Executions** | `/executions` | Coming soon |
+| **Observability** | `/observability` | Coming soon |
+| **Extensions** | `/extensions` | Coming soon |
+| **Administration** | `/administration/tenants` | Partial — tenant CRUD |
+
+The UI is **REST-oriented**: server data flows through `src/api/rest.ts` into Zustand domain stores. Components stay declarative.
+
+---
+
+## 2. System context
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                              Browser                                    │
+│  ┌───────────────────────────────────────────────────────────────────┐  │
+│  │  olo-ui (React + Vite, port 3000 dev)                             │  │
+│  │  • URL-driven navigation                                          │  │
+│  │  • Zustand stores per domain                                      │  │
+│  │  • Catalog-driven editors + React Flow canvas                     │  │
+│  └────────────────────────────┬──────────────────────────────────────┘  │
+└───────────────────────────────┼─────────────────────────────────────────┘
+                                │  /api/v1/*  (proxied in dev & Docker)
+                                ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  olo-be (Spring Boot, port 8082)                                        │
+│  • Tenants, dropdowns, health                                         │
+│  • Extension catalog (static JSON from olo-core)                        │
+│  • Workflow configuration files (olo-configuration folder)            │
+└───────────────┬─────────────────────────────┬───────────────────────────┘
+                │                             │
+                ▼                             ▼
+         Redis (optional)              Filesystem / Drive-synced folder
+         tenant list                   olo-configuration/*.json
+```
+
+**olo-be intentionally has no `org.olo` Java dependencies.** Catalog and workflow documents are served as JSON. Editor metadata comes from **olo-core**; workflow definitions come from **olo-definition/olo-configuration**.
+
+---
+
+## 3. Repository layout
+
+```
+olo-ui/                          # Repository root
+├── olo-ui/                      # Frontend package (this document)
+│   ├── src/
+│   │   ├── api/                 # REST client (`/api/v1`)
+│   │   ├── components/
+│   │   │   ├── builder/         # BuilderSidePanel, VariablesSection, …
+│   │   │   ├── canvas/          # WorkflowCanvas, CatalogFlowNode
+│   │   │   └── …                # Shell, lists, editors
+│   │   ├── config/              # Feature flags, tool registry
+│   │   ├── lib/
+│   │   │   ├── workflowGraph.ts # Workflow JSON ↔ React Flow
+│   │   │   ├── workflowResources.ts  # Variables, tools, hooks, agents
+│   │   │   ├── catalogLookup.ts
+│   │   │   ├── canvasDrag.ts
+│   │   │   └── workflowConfiguration.ts
+│   │   ├── routes.ts
+│   │   ├── store/
+│   │   ├── styles/
+│   │   └── types/               # catalog.ts, workflow.ts, layout.ts
+│   ├── docs/
+│   └── vite.config.ts           # Dev proxy `/api` → :8082
+├── olo-be/
+└── docs/                        # Shared contributor docs
+```
+
+---
+
+## 4. Application shell
+
+`App.tsx` wires URL sync, health gate, panel layout, and store subscriptions. It does **not** own domain logic.
+
+### Workflows → Builder (four panels)
+
+```
+┌──────────┬─────────────┬──────────────────────┬──────────────┐
+│  Nav     │  Builder    │  Canvas              │  Properties  │
+│          │  panel      │  (React Flow)        │              │
+│ Overview │ Components  │  Drag/connect nodes  │  Workflow    │
+│ Workflows│ Variables   │  Delete / move       │  parameters  │
+│ …        │ Tools       │                      │  Save        │
+│          │ Hooks       │                      │              │
+│          │ Child WFs   │                      │              │
+│          │ Agents      │                      │              │
+└──────────┴─────────────┴──────────────────────┴──────────────┘
+```
+
+The **Builder panel** is resizable (drag handle between Builder and Canvas). Query param `tools=1` controls its visibility (`toolsPanelExpanded` in `ui` store).
+
+**List + form views** (Import / Export, Administration → Tenants) hide the Builder panel — Main list + Properties form only.
+
+See [LAYOUT_CONTRACT.md](../../docs/LAYOUT_CONTRACT.md) for panel intent rules.
+
+---
+
+## 5. Navigation and URL
+
+| Path pattern | Example | Meaning |
+|--------------|---------|---------|
+| `/:section` | `/overview` | Section without sub-options |
+| `/:section/:sub` | `/workflows/builder` | Section + sub-option |
+| `/:section/run/:runId/:sub` | (future Executions) | Run-level view |
+| Query `tenant`, `menu`, `tools`, `props` | `?props=1` | Tenant + panel visibility |
+
+Helpers: `src/routes.ts` — `parsePath`, `buildPath`, `buildQuery`, `parseQuery`.
+
+Definitions: `src/types/layout.ts` (`SECTIONS`). Feature gating: `src/config/features.ts`.
+
+**Default path:** `/workflows/builder`.
+
+---
+
+## 6. State management
+
+One **Zustand store per domain** (not per component).
+
+| Store | Responsibility |
+|-------|----------------|
+| `ui.ts` | Panel widths/expansion, navigation mirror, theme |
+| `tenantConfig.ts` | Tenant list, selection, CRUD |
+| `workflowConfigurationStore.ts` | Workflow list, draft, dirty, import/export, `selectedCanvasNodeId` |
+| `catalogStore.ts` | Extension catalog from olo-core |
+| `runtime.ts`, `ledger.ts`, … | Placeholders for future sections |
+
+**Data flow:**
+
+```
+URL → App → Store action → API (rest.ts) → Store state → Component
+```
+
+Components never call `fetch` directly. See `src/store/README.md` and root [ARCHITECTURE.md](../../docs/ARCHITECTURE.md).
+
+---
+
+## 7. API layer
+
+All HTTP via `src/api/rest.ts` under **`/api/v1`**:
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /health` | Backend readiness |
+| `GET/POST/PUT/DELETE /tenants` | Tenant CRUD |
+| `GET /dropdowns` | Tenants, environments, run IDs |
+| `GET /catalog` | Merged `catalog.json` |
+| `GET /configuration/workflows` | List workflow `*.json` files |
+| `GET/PUT/DELETE /configuration/workflows/{file}` | Read/write/delete preset |
+| `GET /configuration/workflows/meta/root` | Configured folder path |
+
+Dev: Vite proxies `/api` → `localhost:8082`. Docker: nginx proxies to embedded Spring Boot.
+
+---
+
+## 8. Feature flags
+
+`config/features.ts` gates sections at composition time (`LeftPanel`):
+
+`overview`, `workflows`, `executions`, `observability`, `extensions`, `administration`, plus sub-flags `tenantConfiguration`, `workflowConfiguration`.
+
+Flags must not branch business logic inside domain stores.
+
+---
+
+## 9. Catalog integration
+
+```
+olo-mono/olo-core/dist/catalog/catalog.json
+        │  syncExtensionCatalog (olo-be build)
+        ▼
+GET /api/v1/catalog  →  catalogStore  →  editors / builder / canvas
+```
+
+`catalog.json` contains **nodes**, **tools**, **hooks**, **workflowPresets**, and **defaults** (connection rules, designer sizing).
+
+| Helper | Use |
+|--------|-----|
+| `findWorkflowPreset` | Match `workflow.id` → preset parameters |
+| `findCatalogNode` | Resolve node `type` → palette metadata |
+| `presetParametersForWorkflow` | Properties panel parameter fields |
+| `catalogComponentGroups` | Group nodes/tools/hooks for Builder panel |
+
+Regenerate after olo-core changes:
+
+```powershell
+cd olo-mono\olo-core
+.\gradlew.bat exportStudioCatalog
+cd olo-ui\olo-be
+.\gradlew.bat build
+```
+
+---
+
+## 10. Workflow configuration (olo-configuration)
+
+Workflow presets are **WorkflowDefinition** JSON — graph, parameters, runtime resources — stored as `*.json`.
+
+### Catalog vs configuration
+
+| Artifact | Source | UI role |
+|----------|--------|---------|
+| **Catalog** | olo-core `dist/catalog` | Widgets, palette, tool/hook metadata |
+| **olo-configuration** | Backend folder (or Drive-synced path) | Persisted workflow documents |
+
+### Import / Export flow
+
+1. **Workflows → Import / Export** — list presets from `olo.configuration.directory`.
+2. **Import** — file picker; **Export** — browser download.
+3. **Select** — loads `workflowConfigurationStore.draft`.
+4. **Properties** — `WorkflowConfigurationEditor` edits catalog-matched **parameters**.
+5. **Save** — `PUT /api/v1/configuration/workflows/{file}`.
+
+### Builder flow
+
+1. Open a workflow (step above).
+2. **Workflows → Builder**.
+3. **Builder panel** — configure runtime resources (see §11).
+4. **Canvas** — drag nodes from Components; connect ports; move/delete nodes.
+5. **Save** — persists graph + resources to the same JSON file.
+
+### Drive / shared folder
+
+No Google Drive API in v1. Point the backend at a synced folder:
+
+```properties
+# olo-be application.properties
+olo.configuration.directory=C:/Users/you/Google Drive/olo-configuration
+```
+
+---
+
+## 11. Workflow builder
+
+### Canvas (`@xyflow/react`)
+
+| File | Role |
+|------|------|
+| `components/canvas/WorkflowCanvas.tsx` | React Flow host, drop target, connect/delete |
+| `components/canvas/CatalogFlowNode.tsx` | Custom node with catalog port handles |
+| `lib/workflowGraph.ts` | `workflowToFlow` / `flowToWorkflow` conversion |
+| `lib/canvasDrag.ts` | Drag payload from Builder panel → canvas |
+| `lib/portConnection.ts` | Port schema compatibility (future connect validation) |
+
+- Node positions stored in `node.configuration.designer.position`.
+- Edges use olo-definition shape: `sourceNodeId`, `targetNodeId`, optional `sourcePortId` / `targetPortId`.
+- Only catalog **nodes** are draggable onto the canvas (not tools/hooks).
+
+### Builder side panel
+
+`components/builder/BuilderSidePanel.tsx` — expandable sections:
+
+| Section | Writes to workflow JSON |
+|---------|-------------------------|
+| **Components → Nodes** | `nodes[]` (via canvas drag) |
+| **Variables** | `variables[]` — name, type, description, required, metadata |
+| **Tools** | `tools[]` — catalog tool + `runtimeBinding.implementationId` |
+| **Hooks** | `hooks[]` — catalog hook, pattern `**`, `pre` binding |
+| **Child workflows** | `childWorkflows[]` — `{ workflowId, workflowVersion }` |
+| **Available agents** | `availableAgents[]` — `{ id }` planner delegation hints |
+
+Logic: `lib/workflowResources.ts` (`toggleCatalogTool`, `toggleCatalogHook`, `upsertVariable`, etc.).
+
+Child workflows and available agents are chosen from other presets in the same configuration folder (excluding the current workflow).
+
+### Key workflow files
+
+| File | Role |
+|------|------|
+| `store/workflowConfigurationStore.ts` | Draft lifecycle, dirty flag, CRUD |
+| `components/WorkflowConfigurationList.tsx` | Import/export list |
+| `components/WorkflowConfigurationEditor.tsx` | Catalog parameter fields |
+| `components/StudioCanvas.tsx` | Builder canvas entry |
+| `components/builder/VariablesSection.tsx` | Variable CRUD UI |
+| `types/workflow.ts` | TypeScript contracts for workflow document slices |
+
+---
+
+## 12. Backend boundary (olo-be)
+
+| Controller | Responsibility |
+|------------|----------------|
+| `HealthController` | Liveness |
+| `DropdownController` | Tenant/environment/run dropdowns |
+| `ExtensionCatalogController` | Classpath `catalog.json` |
+| `WorkflowConfigurationController` | CRUD on `olo.configuration.directory` |
+
+`WorkflowConfigurationService` sanitizes file names and prevents path traversal.
+
+See [olo-be/docs/README.md](../../olo-be/docs/README.md) and [ENVIRONMENT.md](../../docs/ENVIRONMENT.md).
+
+---
+
+## 13. Styling
+
+Feature-scoped CSS imported from `src/index.css`:
+
+| File | Scope |
+|------|-------|
+| `tokens.css`, `layout.css`, `side-panels.css` | App shell |
+| `tenant-config.css` | Shared form patterns |
+| `workflow-config.css` | Workflow list/editor |
+| `builder-side-panel.css` | Builder panel sections |
+| `workflow-canvas.css` | React Flow canvas + nodes |
+| `components-panel.css` | Legacy component list styles (subset reused) |
+
+Panel widths use CSS variables (`--panel-width-left`, `--panel-width-tools`, `--panel-width-properties`) persisted in `localStorage`.
+
+---
+
+## 14. Testing
+
+| Layer | Tool | Examples |
+|-------|------|----------|
+| Routes | Vitest | `routes.test.ts` |
+| Lib | Vitest | `workflowGraph.test.ts`, `workflowResources.test.ts`, `workflowConfiguration.test.ts` |
+| Stores | Vitest | `ui.test.ts` |
+| Integration | Vitest + RTL | `App.routing.test.tsx` |
+| Components | Storybook | `*.stories.tsx` |
+
+```bash
+cd olo-ui/olo-ui
+npm run test
+```
+
+See [TEST_STRATEGY.md](../../docs/TEST_STRATEGY.md).
+
+---
+
+## 15. Build and deployment
+
+### Local development
+
+```powershell
+# Terminal 1 — backend
+cd olo-ui\olo-be
+.\gradlew.bat bootRun
+
+# Terminal 2 — frontend
+cd olo-ui\olo-ui
+npm run dev
+```
+
+Open `http://localhost:3000` (API proxied to `:8082`).
+
+Ensure `olo-mono/olo-core/dist/catalog` exists (run `exportStudioCatalog`) before building olo-be so `/api/v1/catalog` is populated.
+
+### Production
+
+```powershell
+cd olo-ui\olo-ui
+npm run build
+
+cd olo-ui\olo-be
+.\gradlew.bat build
+```
+
+### Docker
+
+Combined image from **olo-ui repository root**. See [DOCKERHUB-PAGE.md](DOCKERHUB-PAGE.md).
+
+---
+
+## 16. Extension points
+
+| Mechanism | Declares | Host owns |
+|-----------|----------|-----------|
+| `SECTIONS` / `layout.ts` | Nav structure | LeftPanel, MainContent |
+| `features.ts` | Capability toggles | Section visibility |
+| Catalog JSON | Node/tool/hook/preset metadata | Builder panel, canvas, Properties |
+| `toolRegistry.ts` | Contextual tools (non-builder views) | ToolsPanel |
+
+Extensions register **metadata only**. See [EXTENSIBILITY.md](../../docs/EXTENSIBILITY.md).
+
+---
+
+## 17. Related documentation
+
+| Document | Location |
+|----------|----------|
+| Contributor architecture | [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md) |
+| Panel layout contract | [docs/LAYOUT_CONTRACT.md](../../docs/LAYOUT_CONTRACT.md) |
+| Environment variables | [docs/ENVIRONMENT.md](../../docs/ENVIRONMENT.md) |
+| Store discipline | [src/store/README.md](../src/store/README.md) |
+| Backend API | [olo-be/docs/README.md](../../olo-be/docs/README.md) |
+| olo-definition workflow schema | `olo-mono/olo-definition/doc/ARCHITECTURE.md` |
+| Docker Hub copy | [DOCKERHUB-PAGE.md](DOCKERHUB-PAGE.md) |
+
+---
+
+## 18. Evolution notes
+
+| Area | Next increments |
+|------|-----------------|
+| **Canvas** | Port schema validation on connect; per-node Properties editor |
+| **Hooks** | Edit pattern / phases in UI (today: default `**` + `pre`) |
+| **Executions / Observability** | Populate stores; run-level routes in `routes.ts` |
+| **Auth** | Gate `rest.ts` or add interceptors |
+| **Catalog** | Hot-reload in dev (today: olo-be rebuild) |
+
+When adding features, extend the **owning domain store** — avoid per-view stores.
