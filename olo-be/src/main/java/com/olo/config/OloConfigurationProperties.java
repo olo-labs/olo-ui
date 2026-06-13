@@ -6,14 +6,14 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 /**
- * Folder of workflow preset JSON files ({@code olo-configuration/default/*.json}).
- * Point at a Drive-synced directory to edit cloud-backed presets.
+ * Folder of active workflow JSON files ({@code olo-configuration/current-active/*.json}).
+ * Place pipeline definitions here manually; point at a Drive-synced copy if needed.
  */
 @ConfigurationProperties(prefix = "olo.configuration")
 public class OloConfigurationProperties {
 
-    /** Absolute or workspace-relative path to the configuration folder. */
-    private String directory = "../../olo-mono/olo-definition/olo-configuration/default";
+    /** Absolute or workspace-relative path to the active configuration folder. */
+    private String directory = "../../olo-mono/olo-definition/olo-configuration/current-active";
 
     public String getDirectory() {
         return directory;
