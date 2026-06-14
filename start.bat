@@ -67,13 +67,15 @@ goto wait_health
 :health_ok
 echo Backend is up.
 
-echo Starting olo-ui on http://localhost:3000 ...
-start "olo-ui" cmd /k "cd /d "%UI_DIR%" && npm run dev"
+if not defined OLO_UI_PORT set "OLO_UI_PORT=3000"
+
+echo Starting olo-ui on http://localhost:%OLO_UI_PORT% ...
+start "olo-ui" cmd /k "cd /d "%UI_DIR%" && npm run dev -- --port %OLO_UI_PORT%"
 
 echo.
 echo ========================================
 echo   Backend: http://localhost:8082
-echo   UI:      http://localhost:3000
+echo   UI:      http://localhost:%OLO_UI_PORT%
 echo ========================================
 echo Close the olo-be and olo-ui windows or run stop.bat to stop.
 echo.

@@ -3,6 +3,7 @@
 .gitignore
 *.md
 .github
+olo-mono
 .DS_Store
 
 # Frontend build artifacts
