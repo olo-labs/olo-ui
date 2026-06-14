@@ -6,7 +6,7 @@ FROM gradle:8.5-jdk17-alpine AS be-builder
 WORKDIR /build
 
 COPY olo-be/ olo-be/
-RUN cd olo-be && chmod +x gradlew && ./gradlew build --no-daemon -x test
+RUN cd olo-be && gradle build --no-daemon -x test
 
 # ---- Build frontend (olo-ui) ----
 # Use Debian-based image: Node Gradle plugin downloads glibc Node binaries; Alpine (musl) cannot run them.
@@ -14,7 +14,7 @@ FROM gradle:8.5-jdk21 AS ui-builder
 WORKDIR /build
 
 COPY olo-ui/ olo-ui/
-RUN cd olo-ui && chmod +x gradlew && ./gradlew build --no-daemon -x test
+RUN cd olo-ui && gradle build --no-daemon -x test
 
 # ---- Runtime: JRE + nginx, run both ----
 FROM eclipse-temurin:17-jre-alpine

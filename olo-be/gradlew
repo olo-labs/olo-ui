@@ -38,7 +38,7 @@ APP_BASE_NAME=${0##*/}
 APP_HOME=$( cd -P "${app_path%/*}" > /dev/null && pwd ) || exit
 
 # Add default JVM options here.
-DEFAULT_JVM_OPTS='-Dfile.encoding=UTF-8 "-Xmx64m" "-Xms64m"'
+DEFAULT_JVM_OPTS='-Xmx64m -Xms64m -Dfile.encoding=UTF-8'
 
 # Find java.exe
 if [ -n "$JAVA_HOME" ]; then
