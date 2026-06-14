@@ -15,7 +15,6 @@ import {
   togglePlannerAgent,
   togglePlannerTool,
   togglePlannerVariable,
-  updatePlannerContext,
   validatePromptTemplate,
 } from './plannerContext'
 import type { WorkflowDocument } from '../types/workflow'
