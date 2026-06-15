@@ -46,11 +46,25 @@ jobs:
           repository: olo-labs/olo-mono
           path: olo-mono
           sparse-checkout: |
+            gradle
+            olo-spi
+            olo-annotation
+            olo-annotation-processor
             olo-core
           sparse-checkout-cone-mode: true
 
       - name: Build and embed extension catalog
         run: |
+          set -eux
+          for script in olo-mono/olo-spi/gradlew olo-mono/olo-annotation/gradlew \
+            olo-mono/olo-annotation-processor/gradlew olo-mono/olo-core/gradlew; do
+            chmod +x "$script"
+          done
+          for module in olo-spi olo-annotation olo-annotation-processor; do
+            echo "Publishing $module to olo-mono/build/repo ..."
+            (cd "olo-mono/$module" && ./gradlew -PoloPublishBuildDir=../build/publish-work/$module \
+              publishMavenPublicationToOloMonoRepository -x test --no-daemon)
+          done
           cd olo-mono/olo-core
           ./gradlew dist -x test --no-daemon
           mkdir -p "$GITHUB_WORKSPACE/olo-be/src/main/resources/static/catalog"
