@@ -1,0 +1,19 @@
+// CI: resolve published olo-mono libs from build/repo during sparse checkout builds.
+allprojects { p ->
+    repositories {
+        def repo = [
+            p.rootProject.file('olo-mono/build/repo'),
+            p.file('../../olo-mono/build/repo'),
+            p.file('../olo-mono/build/repo'),
+            p.layout.projectDirectory.dir('../build/repo').asFile,
+        ].find { it.directory }
+        if (repo != null) {
+            maven {
+                name = 'oloMono'
+                url = repo
+            }
+        }
+        mavenCentral()
+        mavenLocal()
+    }
+}

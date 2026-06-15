@@ -56,17 +56,21 @@ jobs:
       - name: Build and embed extension catalog
         run: |
           set -eux
+          GRADLE_INIT="$GITHUB_WORKSPACE/scripts/olo-mono-ci.init.gradle"
           for script in olo-mono/olo-spi/gradlew olo-mono/olo-annotation/gradlew \
             olo-mono/olo-annotation-processor/gradlew olo-mono/olo-core/gradlew; do
             chmod +x "$script"
           done
           for module in olo-spi olo-annotation olo-annotation-processor; do
             echo "Publishing $module to olo-mono/build/repo ..."
-            (cd "olo-mono/$module" && ./gradlew -PoloPublishBuildDir=../build/publish-work/$module \
+            (cd "olo-mono/$module" && ./gradlew -I "$GRADLE_INIT" \
+              -PoloPublishBuildDir=../build/publish-work/$module \
               publishMavenPublicationToOloMonoRepository -x test --no-daemon)
           done
+          test -f olo-mono/build/repo/org/olo/olo-spi/0.1.0-SNAPSHOT/maven-metadata.xml
+          test -f olo-mono/build/repo/org/olo/olo-annotation/0.1.0-SNAPSHOT/maven-metadata.xml
           cd olo-mono/olo-core
-          ./gradlew dist -x test --no-daemon
+          ./gradlew -I "$GRADLE_INIT" dist -x test --no-daemon
           mkdir -p "$GITHUB_WORKSPACE/olo-be/src/main/resources/static/catalog"
           cp dist/catalog/*.json "$GITHUB_WORKSPACE/olo-be/src/main/resources/static/catalog/"
           test -f "$GITHUB_WORKSPACE/olo-be/src/main/resources/static/catalog/catalog.json"
