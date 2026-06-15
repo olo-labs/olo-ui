@@ -217,7 +217,7 @@ export function BuilderSidePanel({ expanded, onToggle }: BuilderSidePanelProps) 
 
           {disabled ? (
 
-            <p className="builder-panel-message">Open a workflow under Import / Export first.</p>
+            <p className="builder-panel-message">Open a workflow under Agents first.</p>
 
           ) : null}
 

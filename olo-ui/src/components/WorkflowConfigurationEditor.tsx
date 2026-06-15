@@ -175,7 +175,7 @@ export function WorkflowConfigurationEditor({
           value={JSON.stringify(workflow, null, 2)}
           readOnly
         />
-        <p className="workflow-param-help">Use Import/Export for full JSON round-trip outside the catalog fields.</p>
+        <p className="workflow-param-help">Use Agents for full JSON round-trip outside the catalog fields.</p>
       </section>
 
       <div className="tenant-config-form-actions tenant-config-form-actions-bottom">

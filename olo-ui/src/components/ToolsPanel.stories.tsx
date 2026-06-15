@@ -34,7 +34,7 @@ export const Collapsed: Story = {
     ...base,
     expanded: false,
     sectionId: 'workflows',
-    subId: 'import-export',
+    subId: 'agents',
     runSelected: false,
   },
 }
@@ -44,7 +44,7 @@ export const Expanded: Story = {
     ...base,
     expanded: true,
     sectionId: 'workflows',
-    subId: 'import-export',
+    subId: 'agents',
     runSelected: false,
   },
 }

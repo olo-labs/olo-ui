@@ -19,7 +19,8 @@ import { tenantConfigStore } from './store/tenantConfig'
 import { workflowConfigurationStore } from './store/workflowConfigurationStore'
 import { catalogStore } from './store/catalogStore'
 import { presetParametersForWorkflow } from './lib/catalogLookup'
-import { downloadWorkflowJson, readWorkflowFile } from './lib/workflowConfiguration'
+import { downloadWorkflowJson, readWorkflowFile, renameWorkflowPath } from './lib/workflowConfiguration'
+import type { AgentsFileActions } from './components/agents/AgentsContextMenu'
 import {
   parsePath,
   buildPath,
@@ -59,10 +60,10 @@ function App() {
   } = useUIStore()
 
   const isTenantAdmin = sectionId === 'administration' && subId === 'tenants'
-  const isWorkflowImportExport = sectionId === 'workflows' && subId === 'import-export'
+  const isWorkflowAgents = sectionId === 'workflows' && subId === 'agents'
   const isWorkflowBuilder = sectionId === 'workflows' && subId === 'builder'
   const showComponentsPanel = isWorkflowBuilder
-  const needsCatalog = isWorkflowBuilder || isWorkflowImportExport
+  const needsCatalog = isWorkflowBuilder || isWorkflowAgents
   const needsWorkflows = sectionId === 'workflows'
 
   useEffect(() => {
@@ -157,7 +158,7 @@ function App() {
   const handleSectionSubSelect = (sid: SectionId, sub: string) => {
     const params = parsedToPanelParams(q)
     const subOption = getSubOption(sid, sub)
-    const openProps = (sid === 'administration' && sub === 'tenants') || sub === 'import-export'
+    const openProps = (sid === 'administration' && sub === 'tenants') || sub === 'agents'
     navigate(
       buildPathWithQuery(buildPath(sid, sub), {
         ...params,
@@ -188,11 +189,62 @@ function App() {
     updatePanelQuery({ props: 1 })
   }
 
-  const handleExportWorkflow = () => {
-    const doc = workflowConfigurationStore.getState().exportSelected()
-    if (doc) {
-      downloadWorkflowJson(doc, workflowConfigurationStore.getState().selectedFileName ?? undefined)
+  const handleOpenWorkflow = (fileName: string) => {
+    void workflowConfigurationStore.getState().selectWorkflow(fileName)
+    updatePanelQuery({ props: 1 })
+  }
+
+  const handleEditWorkflowInBuilder = async (fileName: string) => {
+    await workflowConfigurationStore.getState().selectWorkflow(fileName)
+    handleSectionSubSelect('workflows', 'builder')
+  }
+
+  const handleDebugWorkflow = async (fileName: string) => {
+    await workflowConfigurationStore.getState().selectWorkflow(fileName)
+    handleSectionSubSelect('workflows', 'debugger')
+  }
+
+  const handleCopyWorkflowPath = (path: string) => {
+    void navigator.clipboard.writeText(path)
+  }
+
+  const handleDuplicateWorkflow = async (fileName: string) => {
+    await workflowConfigurationStore.getState().copyWorkflow(fileName)
+    updatePanelQuery({ props: 1 })
+  }
+
+  const handleRenameWorkflow = async (fileName: string) => {
+    const base = fileName.replace(/\\/g, '/').split('/').pop() ?? fileName
+    const next = window.prompt('Rename workflow file', base)
+    if (!next?.trim()) return
+    try {
+      const newPath = renameWorkflowPath(fileName, next)
+      await workflowConfigurationStore.getState().renameWorkflow(fileName, newPath)
+      updatePanelQuery({ props: 1 })
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'Rename failed')
     }
+  }
+
+  const handleDeleteWorkflowFile = async (fileName: string) => {
+    if (!window.confirm(`Delete ${fileName}?`)) return
+    await workflowConfigurationStore.getState().deleteWorkflow(fileName)
+  }
+
+  const handleExportWorkflowFile = async (fileName: string) => {
+    const doc = await workflowConfigurationStore.getState().exportWorkflow(fileName)
+    downloadWorkflowJson(doc, fileName)
+  }
+
+  const agentsFileActions: AgentsFileActions = {
+    onOpen: handleOpenWorkflow,
+    onEditInBuilder: (fileName) => { void handleEditWorkflowInBuilder(fileName) },
+    onDebug: (fileName) => { void handleDebugWorkflow(fileName) },
+    onCopy: handleDuplicateWorkflow,
+    onRename: handleRenameWorkflow,
+    onDelete: handleDeleteWorkflowFile,
+    onExport: handleExportWorkflowFile,
+    onCopyPath: handleCopyWorkflowPath,
   }
 
   const handleToggleLeftPanel = () => updatePanelQuery({ menu: q.menuExpanded ? 0 : 1 })
@@ -224,7 +276,7 @@ function App() {
     ? presetParametersForWorkflow(catalog, workflowDraft)
     : []
 
-  const showWorkflowProperties = isWorkflowImportExport || isWorkflowBuilder
+  const showWorkflowProperties = isWorkflowAgents || isWorkflowBuilder
 
   if (!backendReady) {
     return (
@@ -293,7 +345,12 @@ function App() {
           selectedWorkflowFile={selectedWorkflowFile}
           onSelectWorkflow={handleSelectWorkflow}
           onImportWorkflowFile={handleImportWorkflowFile}
-          onExportWorkflow={handleExportWorkflow}
+          onReloadWorkflows={() => workflowConfigurationStore.getState().reloadFromDisk()}
+          agentsFileActions={agentsFileActions}
+          agentsCanvasActions={{
+            onReload: () => workflowConfigurationStore.getState().reloadFromDisk(),
+            onImport: () => {},
+          }}
           workflowExportDisabled={!workflowDraft}
         />
         <PanelResizeHandle

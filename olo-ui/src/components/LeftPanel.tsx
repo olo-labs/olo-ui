@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   type SectionConfig,
   type SectionId,
+  getSectionDefaultSubId,
   sectionIsComingSoon,
   subOptionIsComingSoon,
 } from '../types/layout'
@@ -78,7 +79,7 @@ export function LeftPanel({
     if (subs.length > 0) {
       toggleCategory(section.id)
       if (sectionId !== section.id) {
-        onSectionSubSelect(section.id, subs[0].id)
+        onSectionSubSelect(section.id, getSectionDefaultSubId(section.id) || subs[0].id)
       }
       return
     }
@@ -120,7 +121,7 @@ export function LeftPanel({
                     </span>
                     <span className="left-panel-category-label">{section.label}</span>
                     {comingSoon ? (
-                      <span className="left-panel-soon-badge">Soon</span>
+                      <span className="left-panel-soon-badge">{section.comingSoonLabel ?? 'Scheduled'}</span>
                     ) : section.status === 'partial' ? (
                       <span className="left-panel-partial-badge">Partial</span>
                     ) : null}
@@ -137,7 +138,7 @@ export function LeftPanel({
                           >
                             {sub.label}
                             {subOptionIsComingSoon(sub) ? (
-                              <span className="left-panel-soon-badge small">Soon</span>
+                              <span className="left-panel-soon-badge small">{sub.comingSoonLabel ?? 'Scheduled'}</span>
                             ) : null}
                           </button>
                         </li>

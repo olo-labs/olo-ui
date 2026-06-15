@@ -30,9 +30,14 @@ describe('routes', () => {
         subId: 'builder',
         runId: null,
       })
+      expect(parsePath('/workflows/agents')).toEqual({
+        sectionId: 'workflows',
+        subId: 'agents',
+        runId: null,
+      })
       expect(parsePath('/workflows/import-export')).toEqual({
         sectionId: 'workflows',
-        subId: 'import-export',
+        subId: 'agents',
         runId: null,
       })
       expect(parsePath('/administration/tenants')).toEqual({

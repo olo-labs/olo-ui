@@ -256,7 +256,7 @@ function WorkflowCanvasInner({ readOnly = false }: WorkflowCanvasProps) {
       <div className="workflow-canvas">
         <CanvasToolbar readOnly={readOnly} />
         <div className="workflow-canvas-empty">
-          <p>Select a workflow from the menu above, or import one under <strong>Import / Export</strong>.</p>
+          <p>Select a workflow from the menu above, or import one under <strong>Agents</strong>.</p>
         </div>
       </div>
     )

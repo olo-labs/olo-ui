@@ -14,9 +14,10 @@ import {
 
 import { ComingSoon } from './ComingSoon'
 
-import { TenantConfigurationList } from './TenantConfigurationList'
+import { AgentsCanvas } from './agents/AgentsCanvas'
+import type { AgentsCanvasActions, AgentsFileActions } from './agents/AgentsContextMenu'
 
-import { WorkflowConfigurationList } from './WorkflowConfigurationList'
+import { TenantConfigurationList } from './TenantConfigurationList'
 
 import { StudioCanvas } from './StudioCanvas'
 
@@ -58,7 +59,11 @@ export interface MainContentProps {
 
   onImportWorkflowFile?: (file: File) => Promise<void>
 
-  onExportWorkflow?: () => void
+  onReloadWorkflows?: () => Promise<void>
+
+  agentsFileActions?: AgentsFileActions
+
+  agentsCanvasActions?: AgentsCanvasActions
 
   workflowExportDisabled?: boolean
 
@@ -98,7 +103,11 @@ export function MainContent({
 
   onImportWorkflowFile,
 
-  onExportWorkflow,
+  onReloadWorkflows,
+
+  agentsFileActions,
+
+  agentsCanvasActions,
 
   workflowExportDisabled = true,
 
@@ -140,7 +149,12 @@ export function MainContent({
 
     if (sectionIsComingSoon(section)) {
 
-      return <ComingSoon title={section.label} />
+      return (
+        <ComingSoon
+          title={section.label}
+          badge={section.comingSoonLabel ?? 'Scheduled'}
+        />
+      )
 
     }
 
@@ -148,7 +162,13 @@ export function MainContent({
 
     if (sub && subOptionIsComingSoon(sub)) {
 
-      return <ComingSoon title={sub.label} description={`${sub.label} will be available in a future release.`} />
+      return (
+        <ComingSoon
+          title={sub.label}
+          badge={sub.comingSoonLabel ?? 'Scheduled'}
+          description={`${sub.label} will be available in a future release.`}
+        />
+      )
 
     }
 
@@ -180,11 +200,11 @@ export function MainContent({
 
 
 
-    if (section.id === 'workflows' && subId === 'import-export') {
+    if (section.id === 'workflows' && subId === 'agents') {
 
       return (
 
-        <WorkflowConfigurationList
+        <AgentsCanvas
 
           workflows={workflows}
 
@@ -196,11 +216,23 @@ export function MainContent({
 
           selectedFileName={selectedWorkflowFile}
 
-          onSelect={onSelectWorkflow ?? (() => {})}
+          fileActions={agentsFileActions ?? {
+            onOpen: onSelectWorkflow ?? (() => {}),
+            onEditInBuilder: () => {},
+            onDebug: () => {},
+            onCopy: async () => {},
+            onRename: async () => {},
+            onDelete: async () => {},
+            onExport: async () => {},
+            onCopyPath: () => {},
+          }}
+
+          canvasActions={agentsCanvasActions ?? {
+            onReload: onReloadWorkflows ?? (async () => {}),
+            onImport: () => {},
+          }}
 
           onImportFile={onImportWorkflowFile ?? (async () => {})}
-
-          onExportSelected={onExportWorkflow ?? (() => {})}
 
           exportDisabled={workflowExportDisabled}
 

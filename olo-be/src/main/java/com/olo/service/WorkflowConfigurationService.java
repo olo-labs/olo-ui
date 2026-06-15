@@ -11,7 +11,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Stream;
 
 @Service
@@ -35,15 +34,17 @@ public class WorkflowConfigurationService {
     public List<WorkflowSummary> listWorkflows() throws IOException {
         Path root = configurationRoot();
         List<WorkflowSummary> summaries = new ArrayList<>();
-        try (Stream<Path> files = Files.list(root)) {
-            files.filter(path -> path.getFileName().toString().endsWith(".json"))
-                    .sorted(Comparator.comparing(path -> path.getFileName().toString()))
+        try (Stream<Path> walk = Files.walk(root)) {
+            walk.filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().endsWith(".json"))
+                    .sorted(Comparator.comparing(path -> root.relativize(path).toString().replace('\\', '/')))
                     .forEach(path -> {
                         try {
                             JsonNode document = mapper.readTree(path.toFile());
                             String id = textOrNull(document, "id");
                             String label = textOrNull(document, "label");
-                            summaries.add(new WorkflowSummary(path.getFileName().toString(), id, label));
+                            String relative = root.relativize(path).toString().replace('\\', '/');
+                            summaries.add(new WorkflowSummary(relative, id, label));
                         } catch (IOException e) {
                             throw new IllegalStateException("Failed to read " + path, e);
                         }
@@ -52,12 +53,12 @@ public class WorkflowConfigurationService {
         return summaries;
     }
 
-    public JsonNode readWorkflow(String fileName) throws IOException {
-        Path file = resolveFile(fileName);
+    public JsonNode readWorkflow(String relativePath) throws IOException {
+        Path file = resolveFile(relativePath);
         return mapper.readTree(file.toFile());
     }
 
-    public WorkflowSummary writeWorkflow(String fileName, JsonNode document) throws IOException {
+    public WorkflowSummary writeWorkflow(String relativePath, JsonNode document) throws IOException {
         if (document == null || !document.isObject()) {
             throw new IllegalArgumentException("workflow document must be a JSON object");
         }
@@ -65,40 +66,57 @@ public class WorkflowConfigurationService {
         if (id == null || id.isBlank()) {
             throw new IllegalArgumentException("workflow id is required");
         }
-        String targetName = sanitizeFileName(fileName != null && !fileName.isBlank() ? fileName : id + ".json");
-        Path file = resolveFile(targetName);
+        String targetPath = sanitizeRelativePath(
+                relativePath != null && !relativePath.isBlank() ? relativePath : id + ".json");
+        Path file = resolveFile(targetPath);
         Files.createDirectories(file.getParent());
         mapper.writerWithDefaultPrettyPrinter().writeValue(file.toFile(), document);
-        return new WorkflowSummary(targetName, id, textOrNull(document, "label"));
+        return new WorkflowSummary(targetPath, id, textOrNull(document, "label"));
     }
 
-    public void deleteWorkflow(String fileName) throws IOException {
-        Files.deleteIfExists(resolveFile(fileName));
+    public void deleteWorkflow(String relativePath) throws IOException {
+        Files.deleteIfExists(resolveFile(relativePath));
     }
 
-    private Path resolveFile(String fileName) throws IOException {
-        String safe = sanitizeFileName(fileName);
+    private Path resolveFile(String relativePath) throws IOException {
+        String safe = sanitizeRelativePath(relativePath);
         Path root = configurationRoot();
         Path resolved = root.resolve(safe).normalize();
         if (!resolved.startsWith(root)) {
-            throw new IllegalArgumentException("invalid file name");
+            throw new IllegalArgumentException("invalid file path");
         }
         return resolved;
     }
 
-    private static String sanitizeFileName(String fileName) {
-        String trimmed = fileName.trim().replace('\\', '/');
-        int slash = trimmed.lastIndexOf('/');
-        if (slash >= 0) {
-            trimmed = trimmed.substring(slash + 1);
+    static String sanitizeRelativePath(String relativePath) {
+        String trimmed = relativePath.trim().replace('\\', '/');
+        while (trimmed.startsWith("/")) {
+            trimmed = trimmed.substring(1);
         }
-        if (!trimmed.endsWith(".json")) {
-            trimmed = trimmed + ".json";
+        if (trimmed.isEmpty() || trimmed.contains("..")) {
+            throw new IllegalArgumentException("invalid workflow file path");
         }
-        if (!trimmed.matches("[A-Za-z0-9._-]+\\.json")) {
-            throw new IllegalArgumentException("invalid workflow file name");
+        String[] segments = trimmed.split("/");
+        StringBuilder safe = new StringBuilder();
+        for (String segment : segments) {
+            if (segment.isEmpty() || ".".equals(segment)) {
+                continue;
+            }
+            if (!segment.matches("[A-Za-z0-9._-]+")) {
+                throw new IllegalArgumentException("invalid workflow file path");
+            }
+            if (!safe.isEmpty()) {
+                safe.append('/');
+            }
+            safe.append(segment);
         }
-        return trimmed;
+        if (safe.isEmpty()) {
+            throw new IllegalArgumentException("invalid workflow file path");
+        }
+        if (!safe.toString().endsWith(".json")) {
+            safe.append(".json");
+        }
+        return safe.toString();
     }
 
     private static String textOrNull(JsonNode node, String field) {

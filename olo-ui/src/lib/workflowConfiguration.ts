@@ -16,6 +16,52 @@ export function workflowFileName(doc: WorkflowDocument): string {
   return `${doc.id}.json`
 }
 
+/** Next available duplicate path in the same folder (e.g. default/agent.json → default/agent-copy.json). */
+export function copyWorkflowPath(fileName: string, existingFileNames: string[]): string {
+  const normalized = fileName.replace(/\\/g, '/')
+  const slash = normalized.lastIndexOf('/')
+  const dir = slash >= 0 ? normalized.slice(0, slash + 1) : ''
+  const base = slash >= 0 ? normalized.slice(slash + 1) : normalized
+  const dot = base.lastIndexOf('.json')
+  const stem = dot > 0 ? base.slice(0, dot) : base.replace(/\.json$/, '')
+
+  const existing = new Set(existingFileNames.map((name) => name.replace(/\\/g, '/')))
+  let candidate = `${dir}${stem}-copy.json`
+  let n = 2
+  while (existing.has(candidate)) {
+    candidate = `${dir}${stem}-copy-${n}.json`
+    n += 1
+  }
+  return candidate
+}
+
+export function renameWorkflowPath(fileName: string, newBaseName: string): string {
+  const normalized = fileName.replace(/\\/g, '/')
+  const slash = normalized.lastIndexOf('/')
+  const dir = slash >= 0 ? normalized.slice(0, slash + 1) : ''
+  const trimmed = newBaseName.trim().replace(/\\/g, '/')
+  const base = trimmed.includes('/') ? trimmed.split('/').pop()! : trimmed
+  if (!base || base.includes('..')) {
+    throw new Error('Invalid file name')
+  }
+  return dir + (base.endsWith('.json') ? base : `${base}.json`)
+}
+
+export function workflowPathStem(fileName: string): string {
+  const base = fileName.replace(/\\/g, '/').split('/').pop() ?? fileName
+  return base.endsWith('.json') ? base.slice(0, -5) : base
+}
+
+export function duplicateWorkflowDocument(
+  document: WorkflowDocument,
+  newFileName: string,
+): WorkflowDocument {
+  const stem = workflowPathStem(newFileName)
+  const cloned = structuredClone(document) as WorkflowDocument
+  cloned.id = stem
+  return cloned
+}
+
 export function downloadWorkflowJson(doc: WorkflowDocument, fileName?: string): void {
   const name = fileName ?? workflowFileName(doc)
   const blob = new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' })

@@ -36,25 +36,36 @@ public class WorkflowConfigurationController {
         return workflows.listWorkflows();
     }
 
-    @GetMapping(value = "/{fileName}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public JsonNode read(@PathVariable String fileName) throws IOException {
-        return workflows.readWorkflow(fileName);
-    }
-
-    @PutMapping(value = "/{fileName}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public WorkflowSummary write(@PathVariable String fileName, @RequestBody JsonNode document) throws IOException {
-        return workflows.writeWorkflow(fileName, document);
-    }
-
-    @DeleteMapping("/{fileName}")
-    public ResponseEntity<Void> delete(@PathVariable String fileName) throws IOException {
-        workflows.deleteWorkflow(fileName);
-        return ResponseEntity.noContent().build();
-    }
-
     @GetMapping(value = "/meta/root", produces = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, String> root() {
         return Map.of("directory", workflows.configurationRoot().toString());
+    }
+
+    @GetMapping(value = "/{*relativePath}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public JsonNode read(@PathVariable String relativePath) throws IOException {
+        return workflows.readWorkflow(normalizePath(relativePath));
+    }
+
+    @PutMapping(value = "/{*relativePath}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+    public WorkflowSummary write(@PathVariable String relativePath, @RequestBody JsonNode document) throws IOException {
+        return workflows.writeWorkflow(normalizePath(relativePath), document);
+    }
+
+    @DeleteMapping("/{*relativePath}")
+    public ResponseEntity<Void> delete(@PathVariable String relativePath) throws IOException {
+        workflows.deleteWorkflow(normalizePath(relativePath));
+        return ResponseEntity.noContent().build();
+    }
+
+    private static String normalizePath(String relativePath) {
+        if (relativePath == null) {
+            return "";
+        }
+        String trimmed = relativePath.trim();
+        while (trimmed.startsWith("/")) {
+            trimmed = trimmed.substring(1);
+        }
+        return trimmed;
     }
 
     @org.springframework.web.bind.annotation.ExceptionHandler(IllegalArgumentException.class)

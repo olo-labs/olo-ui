@@ -22,7 +22,7 @@ Frontend-specific documentation for the **olo-ui** package (`olo-ui/olo-ui/`). C
 | Workflows → Builder | `/workflows/builder` | Drag-and-drop graph canvas, variables, tools, hooks, child workflows, available agents |
 | Workflows → Import / Export | `/workflows/import-export` | List, import, export, save `olo-configuration` JSON |
 | Administration → Tenants | `/administration/tenants` | Tenant CRUD |
-| Overview, Executions, Observability, Extensions | `/overview`, … | Coming soon placeholders |
+| Overview, Executions, Observability, Extensions | `/overview`, … | Scheduled placeholders |
 
 ### Local run
 

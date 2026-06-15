@@ -1,5 +1,5 @@
 import type { SectionId } from './types/layout'
-import { SECTIONS } from './types/layout'
+import { SECTIONS, getSectionDefaultSubId, resolveSubId } from './types/layout'
 
 export const VALID_SECTION_IDS: SectionId[] = [
   'overview',
@@ -20,9 +20,7 @@ function getSection(sectionId: SectionId) {
 
 /** Default subId when only section is in path (e.g. /workflows → builder). */
 export function getDefaultSubId(sectionId: SectionId): string {
-  const section = getSection(sectionId)
-  const options = section?.subOptions ?? []
-  return options[0]?.id ?? ''
+  return getSectionDefaultSubId(sectionId)
 }
 
 function supportsRunLevelRoutes(sectionId: SectionId): boolean {
@@ -79,7 +77,8 @@ export function parsePath(pathname: string): ParsedPath | null {
 
   const subIdRaw = segments[1] ?? getDefaultSubId(sectionId)
   const defaultSub = getDefaultSubId(sectionId)
-  const subId = isValidSubId(sectionId, subIdRaw, false) ? subIdRaw : defaultSub
+  const normalizedSubId = resolveSubId(sectionId, subIdRaw)
+  const subId = isValidSubId(sectionId, normalizedSubId, false) ? normalizedSubId : defaultSub
   return { sectionId, subId, runId: null }
 }
 

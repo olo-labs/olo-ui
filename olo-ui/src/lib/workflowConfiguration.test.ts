@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { parseWorkflowJson, workflowFileName } from './workflowConfiguration'
+import {
+  copyWorkflowPath,
+  parseWorkflowJson,
+  renameWorkflowPath,
+  workflowFileName,
+} from './workflowConfiguration'
 
 describe('parseWorkflowJson', () => {
   it('parses a minimal workflow document', () => {
@@ -21,5 +26,20 @@ describe('parseWorkflowJson', () => {
 describe('workflowFileName', () => {
   it('derives file name from workflow id', () => {
     expect(workflowFileName({ id: 'agent' })).toBe('agent.json')
+  })
+})
+
+describe('copyWorkflowPath', () => {
+  it('creates a sibling copy path in the same folder', () => {
+    expect(copyWorkflowPath('default/agent.json', [])).toBe('default/agent-copy.json')
+    expect(copyWorkflowPath('default/agent.json', ['default/agent-copy.json'])).toBe(
+      'default/agent-copy-2.json',
+    )
+  })
+})
+
+describe('renameWorkflowPath', () => {
+  it('keeps parent folder when renaming', () => {
+    expect(renameWorkflowPath('default/agent.json', 'planner.json')).toBe('default/planner.json')
   })
 })

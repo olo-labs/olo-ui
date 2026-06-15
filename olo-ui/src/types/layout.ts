@@ -40,6 +40,10 @@ export interface SubOption {
 
   componentsPanel?: boolean
 
+  /** Badge text for coming-soon sub-options (default: Scheduled). */
+
+  comingSoonLabel?: string
+
   /** Legacy contextual tool IDs (non-builder views). */
 
   toolIds?: string[]
@@ -60,11 +64,19 @@ export interface SectionConfig {
 
   subtitle: string
 
+  /** Badge text when status is coming-soon (default: Scheduled). */
+
+  comingSoonLabel?: string
+
   subOptions: SubOption[]
 
   /** Future: run-level tabs when a run is selected (Executions, Observability). */
 
   runSelectedOptions?: SubOption[]
+
+  /** Default sub-route when the section path omits a sub-segment. */
+
+  defaultSubId?: string
 
 }
 
@@ -81,6 +93,8 @@ export const SECTIONS: SectionConfig[] = [
     emoji: '🏠',
 
     status: 'coming-soon',
+
+    comingSoonLabel: 'SCHEDULED-V1',
 
     subtitle: 'Product dashboard',
 
@@ -100,7 +114,23 @@ export const SECTIONS: SectionConfig[] = [
 
     subtitle: 'Design and manage workflows',
 
+    defaultSubId: 'builder',
+
     subOptions: [
+
+      {
+
+        id: 'agents',
+
+        label: 'Agents',
+
+        description: 'Import, export, and manage workflow JSON',
+
+        status: 'available',
+
+        featureId: 'workflowConfiguration',
+
+      },
 
       {
 
@@ -118,15 +148,15 @@ export const SECTIONS: SectionConfig[] = [
 
       {
 
-        id: 'import-export',
+        id: 'debugger',
 
-        label: 'Import / Export',
+        label: 'Debugger',
 
-        description: 'Import, export, and manage workflow JSON',
+        description: 'Step through workflow runs and inspect state',
 
-        status: 'available',
+        status: 'coming-soon',
 
-        featureId: 'workflowConfiguration',
+        comingSoonLabel: 'SCHEDULED-V3',
 
       },
 
@@ -140,6 +170,8 @@ export const SECTIONS: SectionConfig[] = [
 
         status: 'coming-soon',
 
+        comingSoonLabel: 'SCHEDULED-V5',
+
       },
 
       {
@@ -151,6 +183,8 @@ export const SECTIONS: SectionConfig[] = [
         description: 'Workflow version history',
 
         status: 'coming-soon',
+
+        comingSoonLabel: 'SCHEDULED-V6',
 
       },
 
@@ -168,6 +202,8 @@ export const SECTIONS: SectionConfig[] = [
 
     status: 'coming-soon',
 
+    comingSoonLabel: 'SCHEDULED-V4',
+
     subtitle: 'Live and recent runs',
 
     subOptions: [],
@@ -184,6 +220,8 @@ export const SECTIONS: SectionConfig[] = [
 
     status: 'coming-soon',
 
+    comingSoonLabel: 'SCHEDULED-V4',
+
     subtitle: 'Metrics, logs, and traces',
 
     subOptions: [],
@@ -199,6 +237,8 @@ export const SECTIONS: SectionConfig[] = [
     emoji: '🔌',
 
     status: 'coming-soon',
+
+    comingSoonLabel: 'SCHEDULED-V5',
 
     subtitle: 'Plugins and integrations',
 
@@ -257,6 +297,34 @@ export function getSubOption(sectionId: SectionId, subId: string): SubOption | u
   if (!section) return undefined
 
   return section.subOptions.find((s) => s.id === subId)
+
+}
+
+
+
+export function getSectionDefaultSubId(sectionId: SectionId): string {
+
+  const section = getSection(sectionId)
+
+  if (!section) return ''
+
+  if (section.defaultSubId) return section.defaultSubId
+
+  return section.subOptions[0]?.id ?? ''
+
+}
+
+
+
+export function resolveSubId(sectionId: SectionId, subId: string): string {
+
+  if (sectionId === 'workflows' && subId === 'import-export') {
+
+    return 'agents'
+
+  }
+
+  return subId
 
 }
 

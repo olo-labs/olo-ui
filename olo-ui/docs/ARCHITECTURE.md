@@ -12,11 +12,11 @@ For contributor conventions (state flow, store rules, naming), see the repositor
 
 | Section | Route | Status |
 |---------|-------|--------|
-| **Overview** | `/overview` | Coming soon |
-| **Workflows** | `/workflows/builder`, `/workflows/import-export` | **Primary product** — graph editor + olo-configuration |
-| **Executions** | `/executions` | Coming soon |
-| **Observability** | `/observability` | Coming soon |
-| **Extensions** | `/extensions` | Coming soon |
+| **Overview** | `/overview` | Scheduled |
+| **Workflows** | `/workflows/builder`, `/workflows/agents` | **Primary product** — graph editor + olo-configuration |
+| **Executions** | `/executions` | Scheduled |
+| **Observability** | `/observability` | Scheduled |
+| **Extensions** | `/extensions` | Scheduled |
 | **Administration** | `/administration/tenants` | Partial — tenant CRUD |
 
 The UI is **REST-oriented**: server data flows through `src/api/rest.ts` into Zustand domain stores. Components stay declarative.

@@ -58,14 +58,27 @@ describe('App routing integration', () => {
     expect(heading).toBeTruthy()
   })
 
-  it('renders coming soon for overview', async () => {
+  it('renders scheduled badge for overview', async () => {
     vi.mocked(isFeatureEnabled).mockReturnValue(true)
     render(
       <MemoryRouter initialEntries={['/overview']}>
         <App />
       </MemoryRouter>,
     )
-    const badge = await screen.findByText('Coming Soon', {}, { timeout: 3000 })
-    expect(badge).toBeTruthy()
+    const badges = await screen.findAllByText('SCHEDULED-V1', {}, { timeout: 3000 })
+    expect(badges.length).toBeGreaterThan(0)
+  })
+
+  it('renders debugger with SCHEDULED-V3 badge', async () => {
+    vi.mocked(isFeatureEnabled).mockReturnValue(true)
+    render(
+      <MemoryRouter initialEntries={['/workflows/debugger']}>
+        <App />
+      </MemoryRouter>,
+    )
+    const badges = await screen.findAllByText('SCHEDULED-V3', {}, { timeout: 3000 })
+    expect(badges.length).toBeGreaterThan(0)
+    const heading = await screen.findByRole('heading', { name: /Workflows.*Debugger/i }, { timeout: 3000 })
+    expect(heading).toBeTruthy()
   })
 })

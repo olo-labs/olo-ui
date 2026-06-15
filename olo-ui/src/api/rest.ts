@@ -110,8 +110,16 @@ export async function listWorkflowConfigurations(): Promise<WorkflowSummary[]> {
   return res.json()
 }
 
+function encodeWorkflowPath(fileName: string): string {
+  return fileName
+    .replace(/\\/g, '/')
+    .split('/')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/')
+}
+
 export async function getWorkflowConfiguration(fileName: string): Promise<WorkflowDocument> {
-  const res = await fetch(`${API_BASE}/configuration/workflows/${encodeURIComponent(fileName)}`)
+  const res = await fetch(`${API_BASE}/configuration/workflows/${encodeWorkflowPath(fileName)}`)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json()
 }
@@ -120,7 +128,7 @@ export async function saveWorkflowConfiguration(
   fileName: string,
   document: WorkflowDocument,
 ): Promise<WorkflowSummary> {
-  const res = await fetch(`${API_BASE}/configuration/workflows/${encodeURIComponent(fileName)}`, {
+  const res = await fetch(`${API_BASE}/configuration/workflows/${encodeWorkflowPath(fileName)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(document),
@@ -130,7 +138,7 @@ export async function saveWorkflowConfiguration(
 }
 
 export async function deleteWorkflowConfiguration(fileName: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/configuration/workflows/${encodeURIComponent(fileName)}`, {
+  const res = await fetch(`${API_BASE}/configuration/workflows/${encodeWorkflowPath(fileName)}`, {
     method: 'DELETE',
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)

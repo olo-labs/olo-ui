@@ -2,6 +2,8 @@ export interface ComingSoonProps {
 
   title: string
 
+  badge?: string
+
   description?: string
 
 }
@@ -14,13 +16,13 @@ const DEFAULT_DESCRIPTION =
 
 
 
-export function ComingSoon({ title, description = DEFAULT_DESCRIPTION }: ComingSoonProps) {
+export function ComingSoon({ title, badge = 'Scheduled', description = DEFAULT_DESCRIPTION }: ComingSoonProps) {
 
   return (
 
     <div className="coming-soon">
 
-      <p className="coming-soon-badge">Coming Soon</p>
+      <p className="coming-soon-badge">{badge}</p>
 
       <h2 className="coming-soon-title">{title}</h2>
 
