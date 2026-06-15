@@ -16,6 +16,19 @@ export default defineConfig({
         target: 'http://localhost:8082',
         changeOrigin: true,
       },
+      '/runtime-api': {
+        target: 'http://localhost:7080',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/runtime-api/, '/api'),
+        configure: (proxy) => {
+          proxy.on('proxyRes', (proxyRes, req) => {
+            if (req.url?.includes('/events')) {
+              proxyRes.headers['cache-control'] = 'no-cache'
+              proxyRes.headers['x-accel-buffering'] = 'no'
+            }
+          })
+        },
+      },
     },
   },
 })
