@@ -1,5 +1,5 @@
 # Combined image: olo-be (Spring Boot) + olo-ui (nginx). Both run in one container.
-# Build from repo root (parent of olo-be and olo-ui).
+# Build from repo root. olo-be embeds static/catalog/*.json (from olo-core dist or CI copy).
 
 # ---- Build backend (olo-be) ----
 FROM gradle:8.5-jdk17-alpine AS be-builder

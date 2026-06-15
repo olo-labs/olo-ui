@@ -41,21 +41,21 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Checkout olo-mono (extension catalog)
-        continue-on-error: true
         uses: actions/checkout@v4
         with:
           repository: olo-labs/olo-mono
           path: olo-mono
+          sparse-checkout: |
+            olo-core
+          sparse-checkout-cone-mode: true
 
       - name: Build and embed extension catalog
-        continue-on-error: true
         run: |
-          if [ -f olo-mono/olo-core/gradlew ]; then
-            cd olo-mono/olo-core
-            ./gradlew dist -x test --no-daemon
-            mkdir -p "$GITHUB_WORKSPACE/olo-be/src/main/resources/static/catalog"
-            cp dist/catalog/*.json "$GITHUB_WORKSPACE/olo-be/src/main/resources/static/catalog/"
-          fi
+          cd olo-mono/olo-core
+          ./gradlew dist -x test --no-daemon
+          mkdir -p "$GITHUB_WORKSPACE/olo-be/src/main/resources/static/catalog"
+          cp dist/catalog/*.json "$GITHUB_WORKSPACE/olo-be/src/main/resources/static/catalog/"
+          test -f "$GITHUB_WORKSPACE/olo-be/src/main/resources/static/catalog/catalog.json"
 
       - name: Resolve library version
         id: version

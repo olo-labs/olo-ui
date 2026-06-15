@@ -33,6 +33,15 @@ tasks.register('syncExtensionCatalog', Copy) {
     onlyIf { oloCoreDistCatalog.exists() || bundledCatalog.exists() }
 }
 
+tasks.register('updateExtensionCatalog', Copy) {
+    description = 'Refresh committed static/catalog from olo-mono/olo-core/dist/catalog (run olo-core dist first)'
+    group = 'build'
+    from(oloCoreDistCatalog)
+    into bundledCatalog
+    include('*.json')
+    onlyIf { oloCoreDistCatalog.exists() }
+}
+
 processResources.dependsOn syncExtensionCatalog
 
 dependencies {

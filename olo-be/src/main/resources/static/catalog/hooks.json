@@ -1,0 +1,56 @@
+{
+  "schemaVersion" : "1.0",
+  "generatedBy" : "olo-annotation-processor",
+  "generatedByVersion" : "1.0.0",
+  "generatedAt" : "2026-06-15T18:16:54.473292100Z",
+  "catalogType" : "hooks",
+  "hooks" : [ {
+    "designer" : {
+      "paletteGroup" : "Observability",
+      "searchKeywords" : [ "logging", "core" ]
+    },
+    "kind" : "HOOK",
+    "id" : "olo-core:logging-hook",
+    "version" : "1.0.0",
+    "provider" : "olo-core",
+    "stability" : "stable",
+    "name" : "Logging",
+    "description" : "Structured log lines for hook phases",
+    "category" : "observability",
+    "emoji" : "\uD83D\uDCCB",
+    "tags" : [ "logging", "core" ],
+    "phases" : [ "PRE", "ON_ERROR", "FINALLY" ]
+  }, {
+    "designer" : {
+      "paletteGroup" : "Observability",
+      "searchKeywords" : [ "metrics", "core" ]
+    },
+    "kind" : "HOOK",
+    "id" : "olo-core:metrics-hook",
+    "version" : "1.0.0",
+    "provider" : "olo-core",
+    "stability" : "stable",
+    "name" : "Metrics",
+    "description" : "Lightweight metrics events (log-based stub)",
+    "category" : "observability",
+    "emoji" : "\uD83D\uDCCA",
+    "tags" : [ "metrics", "core" ],
+    "phases" : [ "PRE", "FINALLY" ]
+  }, {
+    "designer" : {
+      "paletteGroup" : "Observability",
+      "searchKeywords" : [ "tracing", "core" ]
+    },
+    "kind" : "HOOK",
+    "id" : "olo-core:tracing-hook",
+    "version" : "1.0.0",
+    "provider" : "olo-core",
+    "stability" : "experimental",
+    "name" : "Tracing",
+    "description" : "Generates a trace span id per hook invocation",
+    "category" : "observability",
+    "emoji" : "\uD83E\uDDF5",
+    "tags" : [ "tracing", "core" ],
+    "phases" : [ "PRE", "ON_ERROR", "FINALLY" ]
+  } ]
+}
