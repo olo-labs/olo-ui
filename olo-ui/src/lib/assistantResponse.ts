@@ -93,6 +93,29 @@ export function pickResponseFromEvents(events: RunEventDto[]): string | null {
   return null
 }
 
+/** True when the run has a final workflow result or terminal failure (not CONTEXT_READY alone). */
+export function isWorkflowFinished(events: RunEventDto[]): boolean {
+  if (
+    events.some(
+      (e) => e.nodeType?.toUpperCase() === 'SYSTEM' && e.status?.toUpperCase() === 'FAILED',
+    )
+  ) {
+    return true
+  }
+  return events.some((e) => {
+    if (e.nodeType?.toUpperCase() !== 'SYSTEM' || e.status?.toUpperCase() !== 'COMPLETED') {
+      return false
+    }
+    const output = e.output as Record<string, unknown> | undefined
+    const metadata = e.metadata as Record<string, unknown> | undefined
+    return (
+      output?.status === 'WORKFLOW_RESULT' ||
+      metadata?.phase === 'kernel-result' ||
+      output?.source === 'temporal'
+    )
+  })
+}
+
 /** Normalize display text; returns null when there is no user-facing message. */
 export function normalizeResponseText(text: string | null | undefined): string | null {
   const trimmed = text?.trim()
