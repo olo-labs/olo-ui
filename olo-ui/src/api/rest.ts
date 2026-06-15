@@ -25,6 +25,21 @@ export async function getHealth(): Promise<HealthResponse> {
   return res.json()
 }
 
+export interface WorkerRefreshResponse {
+  key: string
+  value: string
+}
+
+/** Signal olo-worker to reload configuration and Temporal task queues (via Redis). */
+export async function signalWorkerRefresh(): Promise<WorkerRefreshResponse> {
+  const res = await fetch(`${API_BASE}/worker/refresh`, { method: 'POST' })
+  if (!res.ok) {
+    const detail = await res.text()
+    throw new Error(detail || `HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
 /** Display label: name if non-empty, else id (UUID). Use from lib/tenantDisplay in components. */
 export function tenantDisplayName(t: Tenant): string {
   return (t.name != null && t.name.trim() !== '') ? t.name.trim() : t.id
