@@ -53,6 +53,12 @@ jobs:
             olo-core
           sparse-checkout-cone-mode: true
 
+      - name: Set up Java 21 (olo-core catalog export)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
       - name: Build and embed extension catalog
         run: |
           set -eux
