@@ -40,13 +40,15 @@ if errorlevel 1 (
   exit /b 1
 )
 
-REM Local dev: in-memory tenants (no Redis required).
-if not defined SPRING_AUTOCONFIGURE_EXCLUDE (
-  set "SPRING_AUTOCONFIGURE_EXCLUDE=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration"
+REM Worker refresh (Redis key olo:worker:refresh) needs Redis on spring.data.redis.* (default localhost:46379).
+REM Set OLO_DISABLE_REDIS=1 to use in-memory tenants only — worker refresh will not work.
+set "BE_ENV="
+if "%OLO_DISABLE_REDIS%"=="1" (
+  set "BE_ENV=set SPRING_AUTOCONFIGURE_EXCLUDE=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration &&"
 )
 
 echo Starting olo-be on http://localhost:8082 ...
-start "olo-be" cmd /k "cd /d "%BE_DIR%" && set SPRING_AUTOCONFIGURE_EXCLUDE=%SPRING_AUTOCONFIGURE_EXCLUDE% && "%GRADLE_CMD%" bootRun"
+start "olo-be" cmd /k "cd /d "%BE_DIR%" && %BE_ENV% "%GRADLE_CMD%" bootRun"
 
 echo Waiting for backend health (up to 180s; first run downloads Gradle)...
 set /a WAIT=0

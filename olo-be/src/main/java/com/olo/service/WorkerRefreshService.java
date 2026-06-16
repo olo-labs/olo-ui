@@ -3,9 +3,7 @@ package com.olo.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 
@@ -30,12 +28,15 @@ public class WorkerRefreshService {
 
     public String signalRefresh() {
         if (redisTemplate == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.SERVICE_UNAVAILABLE,
+            throw new IllegalStateException(
                     "Redis is not enabled; cannot signal worker refresh");
         }
-        String value = Instant.now().toString();
-        redisTemplate.opsForValue().set(refreshKey, value);
-        return value;
+        try {
+            String value = Instant.now().toString();
+            redisTemplate.opsForValue().set(refreshKey, value);
+            return value;
+        } catch (RuntimeException e) {
+            throw new IllegalStateException("Redis worker refresh failed: " + e.getMessage(), e);
+        }
     }
 }

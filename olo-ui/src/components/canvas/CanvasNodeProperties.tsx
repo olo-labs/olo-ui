@@ -14,6 +14,7 @@ import {
   readAgentPromptRef,
   readPlannerContext,
 } from '../../lib/plannerContext'
+import { NodeLabelInput } from './NodeLabelInput'
 import { workflowVariables } from '../../lib/workflowResources'
 import {
   agentModelOptions,
@@ -43,6 +44,15 @@ export function CanvasNodeProperties({
 }: CanvasNodePropertiesProps) {
   const variables = workflowVariables(workflow)
 
+  const labelField = (
+    <NodeLabelInput
+      nodeId={node.id}
+      label={node.label}
+      placeholder={node.id}
+      onChange={onChange}
+    />
+  )
+
   if (isStartNodeType(node.type)) {
     const selected = new Set(readStartInputMappings(node))
     return (
@@ -51,6 +61,7 @@ export function CanvasNodeProperties({
         <p className="canvas-node-properties-hint">
           Map workflow variables that receive caller input at the start of the run.
         </p>
+        {labelField}
         <p className="canvas-node-properties-meta">Node id: {node.id}</p>
         {variables.length === 0 ? (
           <p className="builder-empty">Define workflow variables in the Builder panel first.</p>
@@ -93,6 +104,7 @@ export function CanvasNodeProperties({
         <p className="canvas-node-properties-hint">
           Select the workflow variable returned to the caller when the run completes.
         </p>
+        {labelField}
         <p className="canvas-node-properties-meta">Node id: {node.id}</p>
         {variables.length === 0 ? (
           <p className="builder-empty">Define workflow variables in the Builder panel first.</p>
@@ -136,6 +148,7 @@ export function CanvasNodeProperties({
         <p className="canvas-node-properties-hint">
           Choose the planner prompt, model routing, and provider for this agent.
         </p>
+        {labelField}
         <p className="canvas-node-properties-meta">Node id: {node.id}</p>
         {prompts.length === 0 ? (
           <p className="builder-empty">Add planner prompts in the Builder panel first.</p>
@@ -213,6 +226,7 @@ export function CanvasNodeProperties({
         <p className="canvas-node-properties-hint">
           Choose which workflow model provider this node uses at runtime.
         </p>
+        {labelField}
         <p className="canvas-node-properties-meta">Node id: {node.id}</p>
         {providers.length === 0 ? (
           <p className="builder-empty">Add model providers in the Builder panel first.</p>
@@ -243,16 +257,18 @@ export function CanvasNodeProperties({
     )
   }
 
-  return null
+  return (
+    <div className="canvas-node-properties">
+      <div className="side-panel-title">{boundaryNodeLabel(node.type)} node</div>
+      {labelField}
+      <p className="canvas-node-properties-meta">Node id: {node.id}</p>
+      {dirty ? <p className="canvas-node-properties-dirty">Unsaved changes</p> : null}
+    </div>
+  )
 }
 
-export function isCanvasNodePropertiesTarget(node: WorkflowNode): boolean {
-  return (
-    isStartNodeType(node.type)
-    || isEndNodeType(node.type)
-    || isAgentNodeType(node.type)
-    || isModelConsumerNodeType(node.type)
-  )
+export function isCanvasNodePropertiesTarget(_node: WorkflowNode): boolean {
+  return true
 }
 
 export function useSelectedCanvasNode(): WorkflowNode | null {

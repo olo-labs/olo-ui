@@ -11,6 +11,32 @@ import {
 import { findCatalogNode } from './catalogLookup'
 import type { Node, Edge } from '@xyflow/react'
 
+export function resolveNodeDisplayLabel(
+  node: Pick<WorkflowNode, 'id' | 'label' | 'type'>,
+  catalog: StudioCatalog | null,
+): string {
+  const custom = node.label?.trim()
+  if (custom) return custom
+  const descriptor = findCatalogNode(catalog, normalizeNodeType(node.type))
+  return descriptor?.name ?? node.id
+}
+
+export function applyNodeLabel(
+  workflow: WorkflowDocument,
+  nodeId: string,
+  label: string,
+): WorkflowDocument {
+  const trimmed = label.trim()
+  return {
+    ...workflow,
+    nodes: (workflow.nodes ?? []).map((node) =>
+      node.id === nodeId
+        ? { ...node, ...(trimmed ? { label: trimmed } : { label: undefined }) }
+        : node,
+    ),
+  }
+}
+
 export const FLOW_NODE_TYPE = 'catalogNode'
 export const FLOW_EDGE_TYPE = 'catalogEdge'
 
@@ -116,6 +142,7 @@ export function createWorkflowNodeFromCatalog(
   return {
     id,
     type: normalizeNodeType(workflowType),
+    label: catalogItem.name?.trim() || undefined,
     ports,
     reads: [],
     writes: [],
@@ -151,7 +178,7 @@ export function workflowToFlow(
       type: FLOW_NODE_TYPE,
       position,
       data: {
-        label: descriptor?.name ?? node.id,
+        label: resolveNodeDisplayLabel(node, catalog),
         emoji: descriptor?.emoji,
         workflowType,
         catalogId: descriptor?.id,
@@ -199,6 +226,10 @@ export function flowToWorkflow(
       ...existing,
       id: flowNode.id,
       type: normalizeNodeType(flowNode.data.workflowType),
+      label:
+        typeof flowNode.data.label === 'string' && flowNode.data.label.trim()
+          ? flowNode.data.label.trim()
+          : existing?.label,
       configuration,
       ports: existing?.ports ?? [],
       reads: existing?.reads ?? [],

@@ -272,6 +272,8 @@ export interface WorkflowNode {
 
   type: string
 
+  label?: string
+
   configuration?: Record<string, unknown>
 
   ports?: WorkflowPort[]

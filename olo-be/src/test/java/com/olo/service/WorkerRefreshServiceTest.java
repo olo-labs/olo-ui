@@ -7,7 +7,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
-import org.springframework.web.server.ResponseStatusException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -41,7 +40,7 @@ class WorkerRefreshServiceTest {
         WorkerRefreshService service = new WorkerRefreshService(null, "olo:worker:refresh");
 
         assertThatThrownBy(service::signalRefresh)
-                .isInstanceOf(ResponseStatusException.class)
+                .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Redis is not enabled");
     }
 }

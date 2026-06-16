@@ -25,6 +25,7 @@ import {
   catalogIdToWorkflowType,
   createWorkflowNodeFromCatalog,
   flowToWorkflow,
+  resolveNodeDisplayLabel,
   workflowToFlow,
   type CatalogFlowNodeData,
 } from '../../lib/workflowGraph'
@@ -71,7 +72,9 @@ function WorkflowCanvasInner({ readOnly = false }: WorkflowCanvasProps) {
     const next = workflowToFlow(draft, catalog)
     setNodes(next.nodes)
     setEdges(next.edges)
-    syncingRef.current = false
+    queueMicrotask(() => {
+      syncingRef.current = false
+    })
   }, [draft, catalog, setNodes, setEdges])
 
   const persistGraph = useCallback(
@@ -147,7 +150,10 @@ function WorkflowCanvasInner({ readOnly = false }: WorkflowCanvasProps) {
 
   const onSelectionChange = useCallback(
     ({ nodes: selected }: { nodes: Node<CatalogFlowNodeData>[] }) => {
-      setSelectedCanvasNodeId(selected[0]?.id ?? null)
+      if (syncingRef.current) return
+      const nextId = selected[0]?.id ?? null
+      if (nextId === workflowConfigurationStore.getState().selectedCanvasNodeId) return
+      setSelectedCanvasNodeId(nextId)
     },
     [setSelectedCanvasNodeId],
   )
@@ -231,7 +237,7 @@ function WorkflowCanvasInner({ readOnly = false }: WorkflowCanvasProps) {
         type: FLOW_NODE_TYPE,
         position,
         data: {
-          label: catalogItem.name ?? workflowNode.id,
+          label: resolveNodeDisplayLabel(workflowNode, catalog),
           emoji: catalogItem.emoji ?? payload.emoji,
           workflowType,
           catalogId: catalogItem.id,

@@ -18,7 +18,7 @@ public class WorkerRefreshController {
     }
 
     /**
-     * Writes a new token to the worker refresh Redis key so olo-worker reloads configuration and queues.
+     * Worker-only refresh via Redis. For full-stack refresh use POST /api/v1/system/refresh.
      */
     @PostMapping("/refresh")
     public ResponseEntity<WorkerRefreshResponse> refresh() {

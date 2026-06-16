@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { signalWorkerRefresh } from '../../api/rest'
+import { refreshOloStack } from '../../api/rest'
 import { catalogStore } from '../../store/catalogStore'
 import { workflowConfigurationStore } from '../../store/workflowConfigurationStore'
 import { useUIStore } from '../../store/ui'
@@ -129,13 +129,37 @@ export function CanvasToolbar({ readOnly = false }: CanvasToolbarProps) {
 
   const handleRefreshServer = async () => {
     if (signalingWorker) return
+    if (dirty) {
+      const proceed = window.confirm(
+        'You have unsaved changes. Refresh reloads configuration from disk and may overwrite the canvas. Continue?',
+      )
+      if (!proceed) return
+    }
     setSignalingWorker(true)
     try {
-      await signalWorkerRefresh()
+      const result = await refreshOloStack()
+      await Promise.all([
+        catalogStore.getState().loadCatalog(),
+        workflowConfigurationStore.getState().reloadFromDisk(),
+      ])
+      if (!result.ok) {
+        window.alert(
+          `Stack refresh incomplete:\n\n${result.steps.join('\n')}\n\n`
+            + 'Ensure Redis is reachable, olo-worker has cache.enabled=true, and olo backend is on port 7080.',
+        )
+        return
+      }
+      if (!result.runtimeReloaded) {
+        window.alert(
+          `Worker reloaded. Olo runtime was not refreshed:\n\n${result.runtimeMessage ?? 'unknown error'}\n\n`
+            + 'Start olo backend (port 7080) so chat pipeline context updates.',
+        )
+      }
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Worker refresh signal failed'
+      const message = e instanceof Error ? e.message : 'Stack refresh failed'
       window.alert(
-        `Could not signal worker refresh:\n\n${message}\n\nEnsure olo-be can reach Redis and olo-worker has cache.enabled=true.`,
+        `Could not refresh OLO stack:\n\n${message}\n\n`
+          + 'Restart olo-be (port 8082) after pulling latest code, then try again.',
       )
     } finally {
       setSignalingWorker(false)
@@ -219,8 +243,8 @@ export function CanvasToolbar({ readOnly = false }: CanvasToolbarProps) {
               className="workflow-canvas-icon-btn"
               onClick={() => void handleRefreshServer()}
               disabled={signalingWorker}
-              title="Signal worker to reload configuration and queues"
-              aria-label="Signal worker to reload configuration and queues"
+              title="Refresh OLO stack (worker, runtime, studio)"
+              aria-label="Refresh OLO stack (worker, runtime, studio)"
             >
               <RefreshIcon />
             </button>
