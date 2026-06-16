@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { checkOloRuntimeHealth } from '../../api/oloRuntime'
 import { signalWorkerRefresh } from '../../api/rest'
 import { catalogStore } from '../../store/catalogStore'
 import { workflowConfigurationStore } from '../../store/workflowConfigurationStore'
@@ -21,6 +20,24 @@ function SaveIcon() {
       <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
       <polyline points="17 21 17 13 7 13 7 21" />
       <polyline points="7 3 7 8 15 8" />
+    </svg>
+  )
+}
+
+function DiscardIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+      <path d="M3 3v5h5" />
     </svg>
   )
 }
@@ -83,7 +100,8 @@ export function CanvasToolbar({ readOnly = false }: CanvasToolbarProps) {
   const tenantId = useUIStore((s) => s.tenantId)
 
   const [saving, setSaving] = useState(false)
-  const [refreshing, setRefreshing] = useState(false)
+  const [signalingWorker, setSignalingWorker] = useState(false)
+  const [reloadingUi, setReloadingUi] = useState(false)
   const [runOpen, setRunOpen] = useState(false)
 
   const handleWorkflowChange = async (fileName: string) => {
@@ -110,34 +128,46 @@ export function CanvasToolbar({ readOnly = false }: CanvasToolbarProps) {
   }
 
   const handleRefreshServer = async () => {
-    if (refreshing) return
-    setRefreshing(true)
-    const workerWarnings: string[] = []
+    if (signalingWorker) return
+    setSignalingWorker(true)
     try {
-      try {
-        await signalWorkerRefresh()
-      } catch (e) {
-        const message = e instanceof Error ? e.message : 'Worker refresh signal failed'
-        workerWarnings.push(message)
-      }
-      await checkOloRuntimeHealth()
+      await signalWorkerRefresh()
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Worker refresh signal failed'
+      window.alert(
+        `Could not signal worker refresh:\n\n${message}\n\nEnsure olo-be can reach Redis and olo-worker has cache.enabled=true.`,
+      )
+    } finally {
+      setSignalingWorker(false)
+    }
+  }
+
+  const handleDiscardChanges = async () => {
+    if (reloadingUi) return
+    if (dirty) {
+      const discard = window.confirm('Discard unsaved changes and reload from disk?')
+      if (!discard) return
+    }
+    setReloadingUi(true)
+    try {
       await Promise.all([
         catalogStore.getState().loadCatalog(),
         workflowConfigurationStore.getState().reloadFromDisk(),
       ])
-      if (workerWarnings.length > 0) {
-        window.alert(
-          `Studio data reloaded, but worker refresh could not be signaled:\n\n${workerWarnings.join('\n')}\n\nEnsure olo-be can reach Redis and olo-worker has cache.enabled=true.`,
-        )
-      }
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Refresh failed'
-      window.alert(`Refresh server failed: ${message}\n\nEnsure olo is running on port 7080.`)
+      const message = e instanceof Error ? e.message : 'Reload failed'
+      window.alert(`Reload from disk failed: ${message}`)
     } finally {
-      setRefreshing(false)
+      setReloadingUi(false)
     }
   }
 
+  const discardDisabled = readOnly || reloadingUi || workflowsLoading
+  const discardTitle = reloadingUi
+    ? 'Reloading…'
+    : dirty
+      ? 'Discard changes and reload from disk'
+      : 'Reload from disk'
   const saveDisabled = readOnly || !draft || !selectedFileName || saving || !dirty
   const saveTitle = saving
     ? 'Saving…'
@@ -188,9 +218,9 @@ export function CanvasToolbar({ readOnly = false }: CanvasToolbarProps) {
               type="button"
               className="workflow-canvas-icon-btn"
               onClick={() => void handleRefreshServer()}
-              disabled={refreshing}
-              title="Refresh studio data and signal worker queue reload"
-              aria-label="Refresh studio data and signal worker queue reload"
+              disabled={signalingWorker}
+              title="Signal worker to reload configuration and queues"
+              aria-label="Signal worker to reload configuration and queues"
             >
               <RefreshIcon />
             </button>
@@ -204,17 +234,29 @@ export function CanvasToolbar({ readOnly = false }: CanvasToolbarProps) {
               <RunIcon />
               <span>Run</span>
             </button>
-            <button
-              type="button"
-              className={`workflow-canvas-save-btn${dirty ? ' dirty' : ''}`}
-              onClick={() => void handleSave()}
-              disabled={saveDisabled}
-              title={saveTitle}
-              aria-label={saveTitle}
-            >
-              <SaveIcon />
-              {dirty ? <span className="workflow-canvas-save-dot" aria-hidden /> : null}
-            </button>
+            <div className="workflow-canvas-edit-actions">
+              <button
+                type="button"
+                className={`workflow-canvas-discard-btn${dirty ? ' dirty' : ''}`}
+                onClick={() => void handleDiscardChanges()}
+                disabled={discardDisabled}
+                title={discardTitle}
+                aria-label={discardTitle}
+              >
+                <DiscardIcon />
+              </button>
+              <button
+                type="button"
+                className={`workflow-canvas-save-btn${dirty ? ' dirty' : ''}`}
+                onClick={() => void handleSave()}
+                disabled={saveDisabled}
+                title={saveTitle}
+                aria-label={saveTitle}
+              >
+                <SaveIcon />
+                {dirty ? <span className="workflow-canvas-save-dot" aria-hidden /> : null}
+              </button>
+            </div>
           </div>
         ) : null}
       </div>
@@ -229,4 +271,3 @@ export function CanvasToolbar({ readOnly = false }: CanvasToolbarProps) {
     </>
   )
 }
-
