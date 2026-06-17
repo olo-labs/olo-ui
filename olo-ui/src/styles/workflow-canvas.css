@@ -309,8 +309,52 @@
   font-family: inherit;
 }
 
+.builder-run-quick-prompts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.builder-run-quick-btn {
+  padding: 0.25rem 0.55rem;
+  border: 1px solid #3f3f46;
+  border-radius: 999px;
+  background: #27272a;
+  color: #e4e4e7;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.builder-run-quick-btn:hover:not(:disabled) {
+  border-color: #52525b;
+  background: #3f3f46;
+}
+
+.builder-run-quick-btn.active {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+}
+
+.builder-run-quick-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.builder-run-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 .builder-run-submit {
   align-self: flex-start;
+}
+
+.builder-run-quick-run {
+  align-self: flex-start;
+  font-size: 0.78rem;
 }
 
 .builder-run-error {

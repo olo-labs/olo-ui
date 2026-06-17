@@ -14,6 +14,10 @@ import {
   pickResponseFromEvents,
 } from '../../lib/assistantResponse'
 import { formatRunEventLogLine } from '../../lib/runEventLog'
+import {
+  BUILDER_RUN_PROMPT_PRESETS,
+  DEFAULT_BUILDER_RUN_PROMPT,
+} from '../../lib/builderRunPrompts'
 
 export interface BuilderRunDialogProps {
   open: boolean
@@ -95,12 +99,14 @@ export function BuilderRunDialog({
       setError(null)
       eventsRef.current = []
       sessionIdRef.current = ''
+      return
     }
+    setPrompt(DEFAULT_BUILDER_RUN_PROMPT)
     return () => stopRun()
   }, [open, stopRun])
 
-  const handleRun = async () => {
-    const content = prompt.trim()
+  const handleRun = async (messageOverride?: string) => {
+    const content = (messageOverride ?? prompt).trim()
     if (!content || running) return
 
     stopRun()
@@ -197,6 +203,20 @@ export function BuilderRunDialog({
         <label className="builder-run-label" htmlFor="builder-run-prompt">
           Input
         </label>
+        <div className="builder-run-quick-prompts" role="group" aria-label="Quick test messages">
+          {BUILDER_RUN_PROMPT_PRESETS.map((preset) => (
+            <button
+              key={preset.id}
+              type="button"
+              className={`builder-run-quick-btn${prompt === preset.message ? ' active' : ''}`}
+              onClick={() => setPrompt(preset.message)}
+              disabled={running}
+              title={preset.message}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
         <textarea
           id="builder-run-prompt"
           className="builder-run-input"
@@ -207,14 +227,25 @@ export function BuilderRunDialog({
           disabled={running}
         />
 
-        <button
-          type="button"
-          className="tenant-config-btn primary builder-run-submit"
-          onClick={() => void handleRun()}
-          disabled={running || !prompt.trim()}
-        >
-          {running ? 'Running…' : 'Run'}
-        </button>
+        <div className="builder-run-actions">
+          <button
+            type="button"
+            className="tenant-config-btn primary builder-run-submit"
+            onClick={() => void handleRun()}
+            disabled={running || !prompt.trim()}
+          >
+            {running ? 'Running…' : 'Run'}
+          </button>
+          <button
+            type="button"
+            className="tenant-config-btn builder-run-quick-run"
+            onClick={() => void handleRun(DEFAULT_BUILDER_RUN_PROMPT)}
+            disabled={running}
+            title={`Run with "${DEFAULT_BUILDER_RUN_PROMPT}"`}
+          >
+            Quick test
+          </button>
+        </div>
 
         {error ? <p className="builder-run-error">{error}</p> : null}
 
