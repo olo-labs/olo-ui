@@ -126,6 +126,9 @@ function App() {
     if (needsWorkflows) {
       workflowConfigurationStore.getState().loadWorkflows()
     }
+    if (needsWorkflows && !catalogStore.getState().catalog && !catalogStore.getState().loading) {
+      catalogStore.getState().loadCatalog()
+    }
   }, [needsWorkflows])
 
   useEffect(() => {

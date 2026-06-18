@@ -1,4 +1,11 @@
+import { useEffect } from 'react'
 import type { WorkflowDocument } from '../types/workflow'
+import {
+  catalogQueues,
+  catalogWorkflowTypes,
+  findCatalogQueue,
+} from '../lib/temporalCatalog'
+import { catalogStore } from '../store/catalogStore'
 import { WorkflowEmojiPicker } from './WorkflowEmojiPicker'
 
 export interface WorkflowGlobalPropertiesProps {
@@ -14,6 +21,30 @@ function patchWorkflow(
 }
 
 export function WorkflowGlobalProperties({ workflow, onChange }: WorkflowGlobalPropertiesProps) {
+  const catalog = catalogStore((s) => s.catalog)
+  const catalogLoading = catalogStore((s) => s.loading)
+
+  useEffect(() => {
+    if (!catalog && !catalogLoading) {
+      void catalogStore.getState().loadCatalog()
+    }
+  }, [catalog, catalogLoading])
+
+  const queueOptions = catalogQueues(catalog)
+  const workflowTypeOptions = catalogWorkflowTypes(catalog)
+  const currentQueue = workflow.queue ?? ''
+  const currentWorkflowType = workflow.workflowType ?? ''
+
+  const handleQueueChange = (queueName: string) => {
+    const queue = findCatalogQueue(catalog, queueName)
+    onChange(
+      patchWorkflow(workflow, {
+        queue: queueName,
+        workflowType: queue?.workflowType ?? workflow.workflowType,
+      }),
+    )
+  }
+
   return (
     <section className="workflow-config-section">
       <h3 className="workflow-config-section-title">Workflow</h3>
@@ -72,22 +103,54 @@ export function WorkflowGlobalProperties({ workflow, onChange }: WorkflowGlobalP
 
       <label className="tenant-config-form-row workflow-param-row">
         <span className="tenant-config-label">Queue</span>
-        <input
-          className="tenant-config-input"
-          type="text"
-          value={workflow.queue ?? ''}
-          onChange={(e) => onChange(patchWorkflow(workflow, { queue: e.target.value }))}
-        />
+        {queueOptions.length > 0 ? (
+          <select
+            className="tenant-config-input"
+            value={currentQueue}
+            onChange={(e) => handleQueueChange(e.target.value)}
+          >
+            <option value="">Select queue…</option>
+            {queueOptions.map((queue) => (
+              <option key={queue.name} value={queue.name}>
+                {queue.label} ({queue.name})
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            className="tenant-config-input"
+            type="text"
+            value={currentQueue}
+            onChange={(e) => onChange(patchWorkflow(workflow, { queue: e.target.value }))}
+            placeholder={catalogLoading ? 'Loading queues…' : 'Queue name'}
+          />
+        )}
       </label>
 
       <label className="tenant-config-form-row workflow-param-row">
         <span className="tenant-config-label">Workflow type</span>
-        <input
-          className="tenant-config-input"
-          type="text"
-          value={workflow.workflowType ?? ''}
-          onChange={(e) => onChange(patchWorkflow(workflow, { workflowType: e.target.value }))}
-        />
+        {workflowTypeOptions.length > 0 ? (
+          <select
+            className="tenant-config-input"
+            value={currentWorkflowType}
+            onChange={(e) => onChange(patchWorkflow(workflow, { workflowType: e.target.value }))}
+          >
+            <option value="">Select type…</option>
+            {workflowTypeOptions.map((type) => (
+              <option key={type.id} value={type.id}>
+                {type.label}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <input
+            className="tenant-config-input"
+            type="text"
+            value={currentWorkflowType}
+            onChange={(e) => onChange(patchWorkflow(workflow, { workflowType: e.target.value }))}
+            placeholder={catalogLoading ? 'Loading types…' : 'Workflow type'}
+          />
+        )}
       </label>
 
       <label className="tenant-config-form-row workflow-param-row">

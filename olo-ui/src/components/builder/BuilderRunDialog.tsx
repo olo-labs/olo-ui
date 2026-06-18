@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   createRuntimeSession,
   fetchRunResponseWithRetry,
@@ -18,12 +18,21 @@ import {
   BUILDER_RUN_PROMPT_PRESETS,
   DEFAULT_BUILDER_RUN_PROMPT,
 } from '../../lib/builderRunPrompts'
+import {
+  catalogQueues,
+  catalogWorkflowTypes,
+  findCatalogQueue,
+  resolveInitialRunSelection,
+  workflowsForQueue,
+} from '../../lib/temporalCatalog'
+import { catalogStore } from '../../store/catalogStore'
+import { workflowConfigurationStore } from '../../store/workflowConfigurationStore'
 
 export interface BuilderRunDialogProps {
   open: boolean
-  workflowLabel: string
-  workflowId: string
-  taskQueue: string
+  initialWorkflowLabel?: string
+  initialWorkflowId?: string
+  initialTaskQueue?: string
   tenantId: string
   onClose: () => void
 }
@@ -55,12 +64,20 @@ async function resolveWorkflowReturnText(
 
 export function BuilderRunDialog({
   open,
-  workflowLabel,
-  workflowId,
-  taskQueue,
+  initialWorkflowLabel = '',
+  initialWorkflowId = '',
+  initialTaskQueue = '',
   tenantId,
   onClose,
 }: BuilderRunDialogProps) {
+  const catalog = catalogStore((s) => s.catalog)
+  const catalogLoading = catalogStore((s) => s.loading)
+  const catalogError = catalogStore((s) => s.error)
+  const workflows = workflowConfigurationStore((s) => s.workflows)
+  const workflowsLoading = workflowConfigurationStore((s) => s.loading)
+
+  const [selectedQueue, setSelectedQueue] = useState('')
+  const [selectedWorkflowId, setSelectedWorkflowId] = useState('')
   const [prompt, setPrompt] = useState('')
   const [running, setRunning] = useState(false)
   const [logLines, setLogLines] = useState<string[]>([])
@@ -71,6 +88,26 @@ export function BuilderRunDialog({
   const pollRef = useRef<number | null>(null)
   const eventsRef = useRef<RunEventDto[]>([])
   const sessionIdRef = useRef('')
+
+  const queueDefinition = useMemo(
+    () => findCatalogQueue(catalog, selectedQueue),
+    [catalog, selectedQueue],
+  )
+
+  const queueWorkflows = useMemo(
+    () => workflowsForQueue(workflows, selectedQueue),
+    [workflows, selectedQueue],
+  )
+
+  const selectedWorkflow = useMemo(
+    () => queueWorkflows.find((workflow) => workflow.id === selectedWorkflowId),
+    [queueWorkflows, selectedWorkflowId],
+  )
+
+  const workflowLabel = selectedWorkflow?.label ?? initialWorkflowLabel ?? selectedWorkflowId
+  const taskQueue = selectedQueue.trim()
+  const workflowId = selectedWorkflowId.trim()
+  const workflowType = queueDefinition?.workflowType ?? catalogWorkflowTypes(catalog)[0]?.id ?? 'olo'
 
   const stopRun = useCallback(() => {
     abortRef.current?.()
@@ -95,6 +132,8 @@ export function BuilderRunDialog({
     if (!open) {
       stopRun()
       setRunning(false)
+      setSelectedQueue('')
+      setSelectedWorkflowId('')
       setPrompt('')
       setLogLines([])
       setFinalResponse('')
@@ -103,13 +142,48 @@ export function BuilderRunDialog({
       sessionIdRef.current = ''
       return
     }
+
+    if (!catalog) {
+      void catalogStore.getState().loadCatalog()
+    }
+    if (workflows.length === 0 && !workflowsLoading) {
+      void workflowConfigurationStore.getState().loadWorkflows()
+    }
+    if (!catalog || workflowsLoading) {
+      return
+    }
+
+    const initial = resolveInitialRunSelection(
+      catalog,
+      workflows,
+      initialTaskQueue,
+      initialWorkflowId,
+    )
+    if (initial) {
+      setSelectedQueue(initial.queueName)
+      setSelectedWorkflowId(initial.workflowId)
+    }
     setPrompt(DEFAULT_BUILDER_RUN_PROMPT)
     return () => stopRun()
-  }, [open, stopRun])
+  }, [
+    open,
+    stopRun,
+    catalog,
+    workflows,
+    workflowsLoading,
+    initialTaskQueue,
+    initialWorkflowId,
+  ])
+
+  const handleQueueChange = (queueName: string) => {
+    setSelectedQueue(queueName)
+    const nextWorkflow = workflowsForQueue(workflows, queueName)[0]
+    setSelectedWorkflowId(nextWorkflow?.id ?? '')
+  }
 
   const handleRun = async (messageOverride?: string) => {
     const content = (messageOverride ?? prompt).trim()
-    if (!content || running) return
+    if (!content || running || !taskQueue || !workflowId) return
 
     stopRun()
     setRunning(true)
@@ -117,14 +191,16 @@ export function BuilderRunDialog({
     setLogLines([])
     setFinalResponse('')
     eventsRef.current = []
-    appendLog(`Starting workflow "${workflowLabel}" (queue: ${taskQueue})…`)
+    appendLog(
+      `Starting workflow "${workflowLabel}" (queue: ${taskQueue}, type: ${workflowType})…`,
+    )
 
     try {
       const tenant = tenantId.trim() || 'default'
       const { sessionId } = await createRuntimeSession({
         tenantId: tenant,
         queueName: taskQueue,
-        pipelineId: workflowId.trim() || taskQueue,
+        pipelineId: workflowId,
       })
       sessionIdRef.current = sessionId
       appendLog(`Session ${sessionId.slice(0, 8)}… created`)
@@ -179,6 +255,18 @@ export function BuilderRunDialog({
 
   if (!open) return null
 
+  const queues = catalogQueues(catalog)
+  const workflowTypes = catalogWorkflowTypes(catalog)
+  const runDisabled =
+    running ||
+    catalogLoading ||
+    workflowsLoading ||
+    !catalog ||
+    queues.length === 0 ||
+    !taskQueue ||
+    !workflowId ||
+    !prompt.trim()
+
   return (
     <>
       <div className="builder-run-backdrop" onClick={running ? undefined : onClose} aria-hidden />
@@ -198,9 +286,64 @@ export function BuilderRunDialog({
           </button>
         </div>
 
-        <p className="builder-run-meta">
-          {workflowLabel} · queue <code>{taskQueue}</code>
-        </p>
+        {catalogError ? (
+          <p className="builder-run-error">{catalogError}</p>
+        ) : catalogLoading && !catalog ? (
+          <p className="builder-run-meta">Loading queues and workflow types…</p>
+        ) : catalog ? (
+          <div className="builder-run-target">
+            <label className="builder-run-field">
+              <span className="builder-run-label">Queue</span>
+              <select
+                className="builder-run-select tenant-config-input"
+                value={selectedQueue}
+                onChange={(e) => handleQueueChange(e.target.value)}
+                disabled={running}
+              >
+                {queues.map((queue) => (
+                  <option key={queue.name} value={queue.name}>
+                    {queue.label} ({queue.name})
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="builder-run-field">
+              <span className="builder-run-label">Workflow</span>
+              <select
+                className="builder-run-select tenant-config-input"
+                value={selectedWorkflowId}
+                onChange={(e) => setSelectedWorkflowId(e.target.value)}
+                disabled={running || queueWorkflows.length === 0}
+              >
+                {queueWorkflows.map((workflow) => (
+                  <option key={workflow.fileName} value={workflow.id ?? workflow.fileName}>
+                    {workflow.label ?? workflow.id ?? workflow.fileName}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="builder-run-field">
+              <span className="builder-run-label">Workflow type</span>
+              <select
+                className="builder-run-select tenant-config-input"
+                value={workflowType}
+                disabled
+                aria-readonly
+              >
+                {(workflowTypes.length > 0
+                  ? workflowTypes
+                  : [{ id: workflowType, label: workflowType }]
+                ).map((type) => (
+                  <option key={type.id} value={type.id}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        ) : null}
 
         <label className="builder-run-label" htmlFor="builder-run-prompt">
           Input
@@ -234,7 +377,7 @@ export function BuilderRunDialog({
             type="button"
             className="tenant-config-btn primary builder-run-submit"
             onClick={() => void handleRun()}
-            disabled={running || !prompt.trim()}
+            disabled={runDisabled}
           >
             {running ? 'Running…' : 'Run'}
           </button>
@@ -242,7 +385,7 @@ export function BuilderRunDialog({
             type="button"
             className="tenant-config-btn builder-run-quick-run"
             onClick={() => void handleRun(DEFAULT_BUILDER_RUN_PROMPT)}
-            disabled={running}
+            disabled={runDisabled}
             title={`Run with "${DEFAULT_BUILDER_RUN_PROMPT}"`}
           >
             Quick test

@@ -2,7 +2,7 @@
   "schemaVersion" : "1.0",
   "generatedBy" : "olo-annotation-processor",
   "generatedByVersion" : "1.0.0",
-  "generatedAt" : "2026-06-15T18:16:54.473292100Z",
+  "generatedAt" : "2026-06-18T17:34:58.171624500Z",
   "defaults" : {
     "runtime" : {
       "capabilities" : [ "DEBUG", "REPLAY" ]

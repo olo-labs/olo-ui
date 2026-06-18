@@ -198,8 +198,8 @@ export function CanvasToolbar({ readOnly = false }: CanvasToolbarProps) {
     : dirty
       ? 'Save workflow'
       : 'No unsaved changes'
-  const taskQueue = draft?.queue?.trim() || draft?.id?.trim() || ''
-  const runDisabled = !draft || !taskQueue
+  const taskQueue = draft?.queue?.trim() ?? ''
+  const runDisabled = !draft
 
   return (
     <>
@@ -253,7 +253,7 @@ export function CanvasToolbar({ readOnly = false }: CanvasToolbarProps) {
               className="workflow-canvas-run-btn"
               onClick={() => setRunOpen(true)}
               disabled={runDisabled}
-              title={runDisabled ? 'Select a workflow with a queue' : 'Run workflow'}
+              title={runDisabled ? 'Select a workflow first' : 'Run workflow'}
             >
               <RunIcon />
               <span>Run</span>
@@ -287,9 +287,9 @@ export function CanvasToolbar({ readOnly = false }: CanvasToolbarProps) {
 
       <BuilderRunDialog
         open={runOpen}
-        workflowLabel={draft?.label ?? draft?.id ?? 'Workflow'}
-        workflowId={draft?.id?.trim() ?? ''}
-        taskQueue={taskQueue}
+        initialWorkflowLabel={draft?.label ?? draft?.id ?? 'Workflow'}
+        initialWorkflowId={draft?.id?.trim() ?? ''}
+        initialTaskQueue={taskQueue}
         tenantId={tenantId}
         onClose={() => setRunOpen(false)}
       />

@@ -2,7 +2,7 @@
   "schemaVersion" : "1.0",
   "generatedBy" : "olo-annotation-processor",
   "generatedByVersion" : "1.0.0",
-  "generatedAt" : "2026-06-15T18:16:54.473292100Z",
+  "generatedAt" : "2026-06-18T17:34:58.171624500Z",
   "defaults" : {
     "runtime" : {
       "capabilities" : [ "DEBUG", "REPLAY" ]
@@ -962,5 +962,23 @@
         "order" : 3
       }
     } ]
+  } ],
+  "workflowTypes" : [ {
+    "id" : "olo",
+    "label" : "OLO Kernel",
+    "description" : "Standard olo-kernel Temporal workflow",
+    "temporalMethod" : "olo",
+    "workflowInterface" : "org.olo.kernel.temporal.OloKernelWorkflow"
+  } ],
+  "queues" : [ {
+    "name" : "oloQueue1",
+    "label" : "OLO Queue 1",
+    "description" : "Architect and planning workflows",
+    "workflowType" : "olo"
+  }, {
+    "name" : "oloQueue2",
+    "label" : "OLO Queue 2",
+    "description" : "Agent and execution workflows",
+    "workflowType" : "olo"
   } ]
 }

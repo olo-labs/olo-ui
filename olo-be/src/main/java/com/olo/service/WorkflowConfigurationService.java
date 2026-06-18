@@ -43,8 +43,10 @@ public class WorkflowConfigurationService {
                             JsonNode document = mapper.readTree(path.toFile());
                             String id = textOrNull(document, "id");
                             String label = textOrNull(document, "label");
+                            String queue = textOrNull(document, "queue");
+                            String workflowType = textOrNull(document, "workflowType");
                             String relative = root.relativize(path).toString().replace('\\', '/');
-                            summaries.add(new WorkflowSummary(relative, id, label));
+                            summaries.add(new WorkflowSummary(relative, id, label, queue, workflowType));
                         } catch (IOException e) {
                             throw new IllegalStateException("Failed to read " + path, e);
                         }
@@ -71,7 +73,8 @@ public class WorkflowConfigurationService {
         Path file = resolveFile(targetPath);
         Files.createDirectories(file.getParent());
         mapper.writerWithDefaultPrettyPrinter().writeValue(file.toFile(), document);
-        return new WorkflowSummary(targetPath, id, textOrNull(document, "label"));
+        return new WorkflowSummary(targetPath, id, textOrNull(document, "label"),
+                textOrNull(document, "queue"), textOrNull(document, "workflowType"));
     }
 
     public void deleteWorkflow(String relativePath) throws IOException {
@@ -124,5 +127,10 @@ public class WorkflowConfigurationService {
         return value != null && value.isTextual() ? value.asText() : null;
     }
 
-    public record WorkflowSummary(String fileName, String id, String label) {}
+    public record WorkflowSummary(
+            String fileName,
+            String id,
+            String label,
+            String queue,
+            String workflowType) {}
 }

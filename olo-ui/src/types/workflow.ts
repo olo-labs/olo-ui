@@ -342,6 +342,10 @@ export interface WorkflowSummary {
 
   description?: string | null
 
+  queue?: string | null
+
+  workflowType?: string | null
+
 }
 
 

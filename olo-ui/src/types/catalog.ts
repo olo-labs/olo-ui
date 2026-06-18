@@ -10,6 +10,23 @@ export interface StudioCatalog {
   tools?: CatalogTool[]
   hooks?: CatalogHook[]
   workflowPresets?: CatalogWorkflowPreset[]
+  workflowTypes?: CatalogWorkflowType[]
+  queues?: CatalogTemporalQueue[]
+}
+
+export interface CatalogWorkflowType {
+  id: string
+  label: string
+  description?: string
+  temporalMethod?: string
+  workflowInterface?: string
+}
+
+export interface CatalogTemporalQueue {
+  name: string
+  label: string
+  description?: string
+  workflowType: string
 }
 
 export interface CatalogDefaults {
