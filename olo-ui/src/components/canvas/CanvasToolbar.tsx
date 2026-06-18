@@ -288,6 +288,7 @@ export function CanvasToolbar({ readOnly = false }: CanvasToolbarProps) {
       <BuilderRunDialog
         open={runOpen}
         workflowLabel={draft?.label ?? draft?.id ?? 'Workflow'}
+        workflowId={draft?.id?.trim() ?? ''}
         taskQueue={taskQueue}
         tenantId={tenantId}
         onClose={() => setRunOpen(false)}

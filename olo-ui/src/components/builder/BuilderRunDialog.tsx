@@ -22,6 +22,7 @@ import {
 export interface BuilderRunDialogProps {
   open: boolean
   workflowLabel: string
+  workflowId: string
   taskQueue: string
   tenantId: string
   onClose: () => void
@@ -55,6 +56,7 @@ async function resolveWorkflowReturnText(
 export function BuilderRunDialog({
   open,
   workflowLabel,
+  workflowId,
   taskQueue,
   tenantId,
   onClose,
@@ -122,7 +124,7 @@ export function BuilderRunDialog({
       const { sessionId } = await createRuntimeSession({
         tenantId: tenant,
         queueName: taskQueue,
-        pipelineId: taskQueue,
+        pipelineId: workflowId.trim() || taskQueue,
       })
       sessionIdRef.current = sessionId
       appendLog(`Session ${sessionId.slice(0, 8)}… created`)
