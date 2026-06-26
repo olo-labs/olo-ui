@@ -25,7 +25,7 @@ WORKDIR /app
 # Backend jar (Gradle outputs to build/libs/)
 COPY --from=be-builder /build/olo-be/build/libs/olo-be-*.jar /app/olo-be.jar
 
-# Workflow presets (CI: olo-mono current-active → olo-be/docker/runtime-configuration)
+# Workflow presets (committed in olo-be/docker/runtime-configuration; CI may refresh from olo-mono)
 COPY olo-be/docker/runtime-configuration /app/olo-configuration
 
 # Frontend static files
