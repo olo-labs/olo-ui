@@ -50,6 +50,11 @@ jobs:
             olo-spi
             olo-annotation
             olo-annotation-processor
+            olo-definition
+            olo-workflow-input
+            olo-bootstrap
+            olo-kernel-context
+            olo-kernel
             olo-core
           sparse-checkout-cone-mode: true
 
@@ -63,20 +68,41 @@ jobs:
         run: |
           set -eux
           GRADLE_INIT="$GITHUB_WORKSPACE/scripts/olo-mono-ci.init.gradle"
+          GRADLE_FLAGS=(-I "$GRADLE_INIT" --no-daemon -x test)
           for script in olo-mono/olo-spi/gradlew olo-mono/olo-annotation/gradlew \
-            olo-mono/olo-annotation-processor/gradlew olo-mono/olo-core/gradlew; do
+            olo-mono/olo-annotation-processor/gradlew olo-mono/olo-definition/gradlew \
+            olo-mono/olo-workflow-input/gradlew olo-mono/olo-bootstrap/gradlew \
+            olo-mono/olo-kernel-context/gradlew olo-mono/olo-kernel/gradlew \
+            olo-mono/olo-core/gradlew; do
             chmod +x "$script"
           done
-          for module in olo-spi olo-annotation olo-annotation-processor; do
+          publish() {
+            local module="$1"
+            shift
+            local task="publishMavenPublicationToOloMonoRepository"
+            if [ $# -gt 0 ]; then
+              task="$1"
+            fi
             echo "Publishing $module to olo-mono/build/repo ..."
-            (cd "olo-mono/$module" && ./gradlew -I "$GRADLE_INIT" \
-              -PoloPublishBuildDir=../build/publish-work/$module \
-              publishMavenPublicationToOloMonoRepository -x test --no-daemon)
+            (cd "olo-mono/$module" && ./gradlew "${GRADLE_FLAGS[@]}" \
+              -PoloPublishBuildDir=../build/publish-work/"$module" \
+              "$task")
+          }
+          for module in olo-spi olo-annotation olo-annotation-processor; do
+            publish "$module"
+          done
+          publish olo-definition :olo-definition:publishMavenPublicationToOloMonoRepository
+          for module in olo-workflow-input olo-bootstrap olo-kernel-context; do
+            publish "$module"
           done
           test -f olo-mono/build/repo/org/olo/olo-spi/0.1.0-SNAPSHOT/maven-metadata.xml
           test -f olo-mono/build/repo/org/olo/olo-annotation/0.1.0-SNAPSHOT/maven-metadata.xml
+          test -f olo-mono/build/repo/org/olo/olo-definition/0.1.0-SNAPSHOT/maven-metadata.xml
+          test -f olo-mono/build/repo/org/olo/olo-workflow-input/0.1.0-SNAPSHOT/maven-metadata.xml
+          test -f olo-mono/build/repo/org/olo/olo-bootstrap/0.1.0-SNAPSHOT/maven-metadata.xml
+          test -f olo-mono/build/repo/org/olo/olo-kernel-context/0.1.0-SNAPSHOT/maven-metadata.xml
           cd olo-mono/olo-core
-          ./gradlew -I "$GRADLE_INIT" dist -x test --no-daemon
+          ./gradlew "${GRADLE_FLAGS[@]}" dist
           mkdir -p "$GITHUB_WORKSPACE/olo-be/src/main/resources/static/catalog"
           cp dist/catalog/*.json "$GITHUB_WORKSPACE/olo-be/src/main/resources/static/catalog/"
           test -f "$GITHUB_WORKSPACE/olo-be/src/main/resources/static/catalog/catalog.json"
