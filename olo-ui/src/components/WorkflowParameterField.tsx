@@ -2,7 +2,6 @@ import type { CatalogParameter, CatalogComponentBase } from '../types/catalog'
 import type { WorkflowDocument, WorkflowParameter } from '../types/workflow'
 import { agentModelOptions } from '../lib/workflowModelProviders'
 import { catalogStore } from '../store/catalogStore'
-import { workflowConfigurationStore } from '../store/workflowConfigurationStore'
 import {
   readPlannerContext,
   updatePlannerContext,
@@ -140,7 +139,6 @@ export function WorkflowParameterField({
     const stringValue = value == null ? '' : String(value)
     const plannerContext = workflow ? readPlannerContext(workflow) : null
     const resolvedCatalogTools = catalogTools ?? catalogStore.getState().catalog?.tools ?? []
-    const workflowSummaries = workflowConfigurationStore.getState().workflows
 
     const patchPlannerContext = (patch: { injectCapabilities?: boolean; injectAgents?: boolean }) => {
       if (!workflow || !onWorkflowChange) return

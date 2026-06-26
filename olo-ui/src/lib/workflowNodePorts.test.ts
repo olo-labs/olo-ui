@@ -2,10 +2,8 @@ import { describe, expect, it } from 'vitest'
 
 import {
   AGENT_HOST_PORTS,
-  AGENT_PLUGIN_PORTS,
   AGENT_PLUG_PORT_ID,
   CAPABILITIES_PORT_ID,
-  CAPABILITY_PLUGIN_PORTS,
   catalogComponentToPorts,
   groupPortsBySide,
   isAgentPlugPort,

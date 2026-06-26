@@ -233,7 +233,6 @@ function readPlannerContextRecord(doc: WorkflowDocument): Record<string, unknown
 }
 
 export function readPlannerContext(doc: WorkflowDocument): PlannerContextSelection {
-  const defaults = defaultSelection()
   const metadataRecord = readPlannerContextRecord(doc)
 
   let selectedTools = stringArray(metadataRecord.selectedTools)
