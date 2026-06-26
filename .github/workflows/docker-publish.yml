@@ -51,6 +51,7 @@ jobs:
             olo-annotation
             olo-annotation-processor
             olo-definition
+            olo-definition/olo-configuration
             olo-workflow-input
             olo-bootstrap
             olo-kernel-context
@@ -108,8 +109,22 @@ jobs:
           test -f "$GITHUB_WORKSPACE/olo-be/src/main/resources/static/catalog/catalog.json"
           mkdir -p "$GITHUB_WORKSPACE/olo-be/docker/runtime-configuration"
           find "$GITHUB_WORKSPACE/olo-be/docker/runtime-configuration" -mindepth 1 -delete 2>/dev/null || true
-          cp -r olo-mono/olo-definition/olo-configuration/current-active/. \
-            "$GITHUB_WORKSPACE/olo-be/docker/runtime-configuration/"
+          WORKFLOW_SRC=""
+          for candidate in \
+            olo-mono/olo-definition/olo-configuration/current-active \
+            olo-mono/olo-definition/olo-configuration/default; do
+            if [ -d "$candidate" ] && [ -n "$(find "$candidate" -name '*.json' -print -quit)" ]; then
+              WORKFLOW_SRC="$candidate"
+              break
+            fi
+          done
+          if [ -z "$WORKFLOW_SRC" ]; then
+            echo "::error::No workflow JSON in olo-mono checkout. Expected current-active or default under olo-definition/olo-configuration."
+            ls -la olo-mono/olo-definition/olo-configuration 2>/dev/null || ls -la olo-mono/olo-definition/ 2>/dev/null || true
+            exit 1
+          fi
+          echo "Bundling workflow presets from $WORKFLOW_SRC"
+          cp -r "$WORKFLOW_SRC"/. "$GITHUB_WORKSPACE/olo-be/docker/runtime-configuration/"
           test "$(find "$GITHUB_WORKSPACE/olo-be/docker/runtime-configuration" -name '*.json' | wc -l)" -gt 0
 
       - name: Resolve library version
