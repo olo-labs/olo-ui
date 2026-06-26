@@ -1,9 +1,5 @@
 import type { CatalogComponentBase } from '../types/catalog'
-import type {
-  WorkflowDocument,
-  WorkflowPlannerPrompt,
-  WorkflowPlannerPromptParameter,
-} from '../types/workflow'
+import type { WorkflowDocument } from '../types/workflow'
 import {
   availableAgentRefs,
   catalogResourceId,
@@ -17,24 +13,8 @@ import { normalizePromptMacroAliases } from './promptTokens'
 export const PLANNER_MACRO_CAPABILITIES = 'CAPABILITIES'
 export const PLANNER_MACRO_AGENTS = 'AGENTS'
 export const PLANNER_MACROS = [PLANNER_MACRO_CAPABILITIES, PLANNER_MACRO_AGENTS] as const
-export const DEFAULT_PROMPT_ID = 'default-prompt'
-
-export const DEFAULT_PROMPT_TEMPLATE = `You are a research planner.
-
-Investigate {message}.
-
-Use available capabilities when needed.
-Delegate work when another agent is more suitable.`
-
-export type PlannerPromptParameterType = NonNullable<WorkflowPlannerPromptParameter['type']>
-
-export type PlannerPromptParameter = WorkflowPlannerPromptParameter
-
-export type { WorkflowPlannerPrompt }
 
 export interface PlannerContextSelection {
-  prompts: WorkflowPlannerPrompt[]
-  defaultPromptId: string
   selectedVariables: string[]
   selectedTools: string[]
   selectedAgents: string[]
@@ -77,41 +57,8 @@ function stringArray(value: unknown): string[] {
   return value.filter((v): v is string => typeof v === 'string')
 }
 
-function normalizeParameterType(value: unknown): PlannerPromptParameterType {
-  if (value === 'number' || value === 'boolean' || value === 'object') return value
-  if (value === 'integer') return 'number'
-  return 'string'
-}
-
-/** Prompt placeholders are defined by workflow variables, not per-prompt parameters. */
-export function plannerParametersFromVariables(doc: WorkflowDocument): PlannerPromptParameter[] {
-  return workflowVariables(doc).map((variable) => ({
-    name: variable.name,
-    type: normalizeParameterType(variable.type),
-    required: variable.required === true,
-  }))
-}
-
-function defaultPlannerPrompt(): WorkflowPlannerPrompt {
-  return {
-    id: DEFAULT_PROMPT_ID,
-    name: 'Default planner prompt',
-    promptTemplate: DEFAULT_PROMPT_TEMPLATE,
-  }
-}
-
-function serializePlannerPrompt(prompt: WorkflowPlannerPrompt): WorkflowPlannerPrompt {
-  return {
-    id: prompt.id,
-    name: prompt.name,
-    promptTemplate: prompt.promptTemplate,
-  }
-}
-
 function defaultSelection(): PlannerContextSelection {
   return {
-    prompts: [defaultPlannerPrompt()],
-    defaultPromptId: DEFAULT_PROMPT_ID,
     selectedVariables: [],
     selectedTools: ['olo-core:http-tool', 'olo-core:web-search'],
     selectedAgents: [],
@@ -131,45 +78,6 @@ function inferSelectedVariables(
   const fromCapability = doc.capability?.required_context
   if (!Array.isArray(fromCapability)) return []
   return fromCapability.filter((name): name is string => typeof name === 'string' && declared.has(name))
-}
-
-function parsePromptRecord(record: Record<string, unknown>, fallback: WorkflowPlannerPrompt): WorkflowPlannerPrompt {
-  const id = typeof record.id === 'string' && record.id.trim() ? record.id.trim() : fallback.id
-  const name = typeof record.name === 'string' && record.name.trim() ? record.name.trim() : fallback.name
-  const promptTemplate =
-    typeof record.promptTemplate === 'string' && record.promptTemplate.trim()
-      ? record.promptTemplate
-      : fallback.promptTemplate
-  return { id, name, promptTemplate }
-}
-
-function parsePromptsFromArray(
-  value: unknown,
-  defaults: PlannerContextSelection,
-): WorkflowPlannerPrompt[] | null {
-  if (!Array.isArray(value)) return null
-  const parsed = value
-    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
-    .map((item, index) => parsePromptRecord(item, defaults.prompts[index] ?? defaultPlannerPrompt()))
-  return parsed.length > 0 ? parsed : null
-}
-
-function parsePrompts(record: Record<string, unknown>, defaults: PlannerContextSelection): WorkflowPlannerPrompt[] {
-  const fromArray = parsePromptsFromArray(record.prompts, defaults)
-  if (fromArray) return fromArray
-
-  const legacyTemplate =
-    typeof record.promptTemplate === 'string' && record.promptTemplate.trim()
-      ? record.promptTemplate
-      : defaults.prompts[0]?.promptTemplate ?? DEFAULT_PROMPT_TEMPLATE
-
-  return [
-    {
-      id: DEFAULT_PROMPT_ID,
-      name: 'Default planner prompt',
-      promptTemplate: legacyTemplate,
-    },
-  ]
 }
 
 function catalogIdsForLegacyBundles(bundleIds: string[]): string[] {
@@ -257,26 +165,60 @@ export function formatAgentLines(agents: AgentPromptInfo[]): string[] {
   })
 }
 
+const INTERNAL_TOOLS_HEADING = '## Available tools'
+const INTERNAL_AGENTS_HEADING = '## Available agents'
+
+function appendPromptSection(body: string, heading: string, block: string): string {
+  const trimmed = body.trimEnd()
+  if (!block.trim()) return trimmed
+  return `${trimmed}\n\n${heading}\n\n${block}`.trim()
+}
+
+export function resolveAgentPromptInfos(
+  doc: WorkflowDocument,
+  workflows: { id?: string; label?: string; description?: string }[],
+): AgentPromptInfo[] {
+  const byId = new Map(
+    workflows
+      .filter((workflow) => typeof workflow.id === 'string' && workflow.id.length > 0)
+      .map((workflow) => [workflow.id!, workflow]),
+  )
+  return availableAgentRefs(doc).map((ref) => {
+    const summary = byId.get(ref.id)
+    return {
+      id: ref.id,
+      label: summary?.label?.trim() || ref.id,
+      description: summary?.description?.trim(),
+    }
+  })
+}
+
 export function generatePlannerPrompt(
-  prompt: WorkflowPlannerPrompt,
-  context: Pick<
-    PlannerContextSelection,
-    'selectedTools' | 'selectedAgents' | 'injectCapabilities'
-  >,
+  template: string,
+  context: PlannerContextSelection,
   catalogTools: CatalogComponentBase[],
   agents: AgentPromptInfo[],
 ): string {
-  let text = normalizePromptMacroAliases(prompt.promptTemplate)
+  let text = normalizePromptMacroAliases(template)
 
-  if (context.injectCapabilities && text.includes(`{${PLANNER_MACRO_CAPABILITIES}}`)) {
-    const block = formatCapabilityLines(context.selectedTools, catalogTools).join('\n\n')
-    text = text.replaceAll(`{${PLANNER_MACRO_CAPABILITIES}}`, block || '(none)')
+  const toolsBlock = formatCapabilityLines(context.selectedTools, catalogTools).join('\n\n')
+  const selectedAgents = agents.filter((agent) => context.selectedAgents.includes(agent.id))
+  const agentsBlock = formatAgentLines(selectedAgents).join('\n\n')
+
+  if (text.includes(`{${PLANNER_MACRO_CAPABILITIES}}`)) {
+    text = text.replaceAll(`{${PLANNER_MACRO_CAPABILITIES}}`, toolsBlock || '(none)')
   }
 
   if (text.includes(`{${PLANNER_MACRO_AGENTS}}`)) {
-    const selected = agents.filter((agent) => context.selectedAgents.includes(agent.id))
-    const block = formatAgentLines(selected).join('\n\n')
-    text = text.replaceAll(`{${PLANNER_MACRO_AGENTS}}`, block || '(none)')
+    text = text.replaceAll(`{${PLANNER_MACRO_AGENTS}}`, agentsBlock || '(none)')
+  }
+
+  if (context.injectCapabilities) {
+    text = appendPromptSection(text, INTERNAL_TOOLS_HEADING, toolsBlock)
+  }
+
+  if (context.injectAgents) {
+    text = appendPromptSection(text, INTERNAL_AGENTS_HEADING, agentsBlock)
   }
 
   return text.trim()
@@ -294,24 +236,6 @@ export function readPlannerContext(doc: WorkflowDocument): PlannerContextSelecti
   const defaults = defaultSelection()
   const metadataRecord = readPlannerContextRecord(doc)
 
-  const promptsFromRoot = parsePromptsFromArray(doc.prompts, defaults)
-  const prompts =
-    promptsFromRoot ??
-    parsePrompts(metadataRecord, defaults)
-
-  const rootDefaultPromptId =
-    typeof doc.defaultPromptId === 'string' ? doc.defaultPromptId : undefined
-  const metadataDefaultPromptId =
-    typeof metadataRecord.defaultPromptId === 'string'
-      ? metadataRecord.defaultPromptId
-      : undefined
-  const defaultPromptIdCandidate = rootDefaultPromptId ?? metadataDefaultPromptId
-  const defaultPromptId =
-    defaultPromptIdCandidate &&
-    prompts.some((prompt) => prompt.id === defaultPromptIdCandidate)
-      ? defaultPromptIdCandidate
-      : prompts[0]?.id ?? DEFAULT_PROMPT_ID
-
   let selectedTools = stringArray(metadataRecord.selectedTools)
   if (selectedTools.length === 0 && metadataRecord.capabilities) {
     selectedTools = catalogIdsForLegacyBundles(stringArray(metadataRecord.capabilities))
@@ -327,15 +251,8 @@ export function readPlannerContext(doc: WorkflowDocument): PlannerContextSelecti
 
   const selectedVariables = inferSelectedVariables(doc, metadataRecord)
 
-  if (
-    promptsFromRoot ||
-    Object.keys(metadataRecord).length > 0 ||
-    doc.defaultPromptId ||
-    doc.prompts
-  ) {
+  if (Object.keys(metadataRecord).length > 0) {
     return {
-      prompts,
-      defaultPromptId,
       selectedVariables,
       selectedTools,
       selectedAgents,
@@ -345,29 +262,10 @@ export function readPlannerContext(doc: WorkflowDocument): PlannerContextSelecti
   }
 
   const fallback = defaultSelection()
-  fallback.prompts = prompts
-  fallback.defaultPromptId = defaultPromptId
   fallback.selectedVariables = selectedVariables
   fallback.selectedAgents = selectedAgents
   fallback.selectedTools = selectedTools
   return fallback
-}
-
-export function plannerPromptById(
-  selection: PlannerContextSelection,
-  promptId: string,
-): WorkflowPlannerPrompt | null {
-  return selection.prompts.find((prompt) => prompt.id === promptId) ?? null
-}
-
-export function defaultPlannerPromptForWorkflow(
-  selection: PlannerContextSelection,
-): WorkflowPlannerPrompt {
-  return (
-    plannerPromptById(selection, selection.defaultPromptId) ??
-    selection.prompts[0] ??
-    defaultPlannerPrompt()
-  )
 }
 
 function writePlannerContext(
@@ -375,21 +273,18 @@ function writePlannerContext(
   selection: PlannerContextSelection,
 ): WorkflowDocument {
   const existingMetadata = readPlannerContextRecord(doc)
-  const { prompts: _legacyPrompts, defaultPromptId: _legacyDefault, ...plannerMetadata } =
-    existingMetadata
 
   return {
     ...doc,
-    prompts: selection.prompts.map(serializePlannerPrompt),
-    defaultPromptId: selection.defaultPromptId,
     metadata: {
       ...doc.metadata,
       [METADATA_KEY]: {
-        ...plannerMetadata,
+        ...existingMetadata,
         selectedVariables: selection.selectedVariables,
         selectedTools: selection.selectedTools,
         selectedAgents: selection.selectedAgents,
         injectCapabilities: selection.injectCapabilities,
+        injectAgents: selection.injectAgents,
       },
     },
   }
@@ -466,64 +361,6 @@ export function updatePlannerContext(
   return applyPlannerContext(doc, { ...current, ...patch }, catalogTools)
 }
 
-export function updatePlannerPrompt(
-  doc: WorkflowDocument,
-  promptId: string,
-  patch: Partial<Pick<WorkflowPlannerPrompt, 'name' | 'promptTemplate'>>,
-  catalogTools: CatalogComponentBase[],
-): WorkflowDocument {
-  const current = readPlannerContext(doc)
-  const prompts = current.prompts.map((prompt) =>
-    prompt.id === promptId ? serializePlannerPrompt({ ...prompt, ...patch }) : prompt,
-  )
-  return applyPlannerContext(doc, { ...current, prompts }, catalogTools)
-}
-
-export function uniquePromptId(existing: WorkflowPlannerPrompt[]): string {
-  const taken = new Set(existing.map((prompt) => prompt.id))
-  let base = 'prompt'
-  let index = 1
-  while (taken.has(index === 1 ? base : `${base}-${index}`)) index += 1
-  return index === 1 ? base : `${base}-${index}`
-}
-
-export function addPlannerPrompt(
-  doc: WorkflowDocument,
-  catalogTools: CatalogComponentBase[],
-): WorkflowDocument {
-  const current = readPlannerContext(doc)
-  const id = uniquePromptId(current.prompts)
-  const prompt: WorkflowPlannerPrompt = {
-    id,
-    name: `Prompt ${current.prompts.length + 1}`,
-    promptTemplate: '',
-  }
-  return applyPlannerContext(doc, { ...current, prompts: [...current.prompts, prompt] }, catalogTools)
-}
-
-export function removePlannerPrompt(
-  doc: WorkflowDocument,
-  promptId: string,
-  catalogTools: CatalogComponentBase[],
-): WorkflowDocument {
-  const current = readPlannerContext(doc)
-  if (current.prompts.length <= 1) return doc
-  const prompts = current.prompts.filter((prompt) => prompt.id !== promptId)
-  const defaultPromptId =
-    current.defaultPromptId === promptId ? prompts[0]?.id ?? DEFAULT_PROMPT_ID : current.defaultPromptId
-  return applyPlannerContext(doc, { ...current, prompts, defaultPromptId }, catalogTools)
-}
-
-export function setDefaultPlannerPrompt(
-  doc: WorkflowDocument,
-  promptId: string,
-  catalogTools: CatalogComponentBase[],
-): WorkflowDocument {
-  const current = readPlannerContext(doc)
-  if (!current.prompts.some((prompt) => prompt.id === promptId)) return doc
-  return applyPlannerContext(doc, { ...current, defaultPromptId: promptId }, catalogTools)
-}
-
 export function togglePlannerTool(
   doc: WorkflowDocument,
   toolId: string,
@@ -579,41 +416,6 @@ export function togglePlannerVariable(
       : [...current.selectedVariables, variableName]
     : current.selectedVariables.filter((name) => name !== variableName)
   return applyPlannerContext(doc, { ...current, selectedVariables }, catalogTools)
-}
-
-export function readAgentPromptRef(
-  node: { configuration?: Record<string, unknown> },
-  doc: WorkflowDocument,
-): string {
-  const ref = node.configuration?.promptRef
-  const selection = readPlannerContext(doc)
-  if (typeof ref === 'string' && ref.trim() && selection.prompts.some((prompt) => prompt.id === ref)) {
-    return ref
-  }
-  return selection.defaultPromptId
-}
-
-export function applyAgentPromptRef(
-  doc: WorkflowDocument,
-  nodeId: string,
-  promptRef: string,
-): WorkflowDocument {
-  const selection = readPlannerContext(doc)
-  const resolved =
-    promptRef && selection.prompts.some((prompt) => prompt.id === promptRef)
-      ? promptRef
-      : selection.defaultPromptId
-  const nodes = (doc.nodes ?? []).map((node) => {
-    if (node.id !== nodeId) return node
-    return {
-      ...node,
-      configuration: {
-        ...node.configuration,
-        promptRef: resolved,
-      },
-    }
-  })
-  return { ...doc, nodes }
 }
 
 export function plannerContextSummary(

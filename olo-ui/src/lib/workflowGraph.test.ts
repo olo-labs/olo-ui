@@ -121,7 +121,9 @@ describe('workflowGraph', () => {
     expect(node.id).toBe('agent')
     expect(node.label).toBe('Agent')
     expect(node.configuration?.designer).toEqual({ position: { x: 100, y: 200 } })
-    expect(node.ports).toHaveLength(2)
+    expect(node.ports).toHaveLength(4)
+    expect(node.ports?.some((port) => port.id === 'in' && port.direction === 'INPUT')).toBe(true)
+    expect(node.ports?.some((port) => port.id === 'out' && port.direction === 'OUTPUT')).toBe(true)
   })
 
   it('clones start node from workflow template', () => {

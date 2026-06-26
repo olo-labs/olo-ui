@@ -101,6 +101,35 @@
   color: var(--text-muted, #71717a);
 }
 
+.prompt-inject-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem 1rem;
+  margin-top: 0.35rem;
+}
+
+.prompt-inject-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.68rem;
+  color: #d4d4d8;
+  cursor: pointer;
+}
+
+.prompt-inject-option input {
+  accent-color: #3b82f6;
+}
+
+.prompt-inject-hint {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 0.62rem;
+  color: var(--text-muted, #71717a);
+  line-height: 1.35;
+}
+
 .prompt-token-textarea-compact .prompt-token-toolbar {
   gap: 0.2rem;
 }

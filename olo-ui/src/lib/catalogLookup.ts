@@ -1,6 +1,6 @@
-import type { CatalogNode, CatalogParameter, StudioCatalog } from '../types/catalog'
+import type { CatalogComponentBase, CatalogNode, CatalogParameter, StudioCatalog } from '../types/catalog'
 
-import type { WorkflowDocument } from '../types/workflow'
+import type { WorkflowDocument, WorkflowNode } from '../types/workflow'
 
 import { normalizeNodeType } from './boundaryNodes'
 
@@ -58,6 +58,53 @@ export function findCatalogNode(
 
   )
 
+}
+
+
+
+export function findCatalogComponent(
+
+  catalog: StudioCatalog | null,
+
+  nodeType: string,
+
+  workflowNode?: WorkflowNode | null,
+
+): CatalogComponentBase | null {
+
+  const configuration = workflowNode?.configuration ?? {}
+
+  const configuredId =
+
+    (typeof configuration.toolId === 'string' && configuration.toolId)
+
+    || (typeof configuration.hookId === 'string' && configuration.hookId)
+
+    || (typeof configuration.catalogId === 'string' && configuration.catalogId)
+
+    || null
+
+  if (configuredId && catalog) {
+
+    const direct =
+
+      catalog.tools?.find((tool) => tool.id === configuredId)
+
+      ?? catalog.hooks?.find((hook) => hook.id === configuredId)
+
+      ?? catalog.nodes?.find((node) => node.id === configuredId)
+
+    if (direct) return direct
+
+  }
+
+
+
+  const nodeDescriptor = findCatalogNode(catalog, nodeType, workflowNode ? { nodes: [workflowNode] } as WorkflowDocument : null)
+
+  if (nodeDescriptor) return nodeDescriptor
+
+  return null
 }
 
 

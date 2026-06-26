@@ -2,7 +2,7 @@
 
 export const CATALOG_DRAG_MIME = 'application/olo-catalog-component'
 
-export type CatalogDragKind = 'NODE' | 'TOOL' | 'HOOK'
+export type CatalogDragKind = 'NODE' | 'TOOL' | 'HOOK' | 'AGENT'
 
 export interface CatalogDragPayload {
   catalogId: string

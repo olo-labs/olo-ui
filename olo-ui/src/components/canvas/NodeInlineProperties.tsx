@@ -133,6 +133,8 @@ function InlinePropertyBlock({
             value={workflow.parameters?.[descriptor.id]?.defaultValue}
             workflow={workflow}
             workflowVariableNames={variables.map((variable) => variable.name)}
+            catalogTools={catalog?.tools ?? []}
+            onWorkflowChange={onChange}
             onChange={(value) => onChange(updateWorkflowParameterValue(workflow, descriptor.id, value))}
           />
         ))}

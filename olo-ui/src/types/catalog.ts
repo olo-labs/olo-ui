@@ -102,6 +102,7 @@ export interface CatalogPort {
   acceptType?: string | string[]
   direction?: string
   shortDescription?: string
+  description?: string
   required?: boolean
   minConnections?: number
   maxConnections?: number | null
@@ -119,4 +120,6 @@ export interface CatalogWorkflowPreset {
   id: string
   designer?: CatalogComponentBase['designer']
   parameters?: CatalogParameter[]
+  inputs?: CatalogPort[]
+  outputs?: CatalogPort[]
 }

@@ -8,19 +8,13 @@ import { catalogComponentGroups } from '../../lib/catalogComponents'
 
 import { writeCatalogDrag } from '../../lib/canvasDrag'
 
-import {
-  isCatalogHookEnabled,
-  toggleCatalogHook,
-  workflowHooks,
-} from '../../lib/workflowResources'
+import { workflowHooks } from '../../lib/workflowResources'
 import { workflowPaletteNodes } from '../../lib/workflowNodeTemplates'
-import { plannerContextSummary, readPlannerContext } from '../../lib/plannerContext'
+import { isPlannerAgentEnabled, isPlannerToolEnabled } from '../../lib/plannerContext'
 
 import type { CatalogComponentBase } from '../../types/catalog'
 
 import { ExpandableSection } from './ExpandableSection'
-
-import { PlannerContextSection } from './PlannerContextSection'
 
 import { ModelProvidersSection } from './ModelProvidersSection'
 import { VariablesSection } from './VariablesSection'
@@ -39,95 +33,88 @@ export interface BuilderSidePanelProps {
 
 
 type SectionId =
-
   | 'components'
-
   | 'workflowVariables'
-
   | 'modelProviders'
-
-  | 'plannerContext'
-
+  | 'capabilities'
+  | 'agents'
   | 'hooks'
 
-
-
-const DEFAULT_EXPANDED = new Set<SectionId>(['components', 'workflowVariables', 'modelProviders', 'hooks'])
+const DEFAULT_EXPANDED = new Set<SectionId>([
+  'components',
+  'workflowVariables',
+  'modelProviders',
+  'capabilities',
+  'agents',
+  'hooks',
+])
 
 
 
 function handleNodeDragStart(event: React.DragEvent, item: CatalogComponentBase) {
-
   writeCatalogDrag(event.dataTransfer, {
-
     catalogId: item.id,
-
     kind: 'NODE',
-
     name: item.name,
-
     emoji: item.emoji,
-
   })
-
 }
 
+function handleToolDragStart(event: React.DragEvent, item: CatalogComponentBase) {
+  writeCatalogDrag(event.dataTransfer, {
+    catalogId: item.id,
+    kind: 'TOOL',
+    name: item.name,
+    emoji: item.emoji,
+  })
+}
 
+function handleHookDragStart(event: React.DragEvent, item: CatalogComponentBase) {
+  writeCatalogDrag(event.dataTransfer, {
+    catalogId: item.id,
+    kind: 'HOOK',
+    name: item.name,
+    emoji: item.emoji,
+  })
+}
 
-function CatalogCheckItem({
+function handleAgentDragStart(event: React.DragEvent, agentId: string, label: string) {
+  writeCatalogDrag(event.dataTransfer, {
+    catalogId: agentId,
+    kind: 'AGENT',
+    name: label,
+    emoji: '🤖',
+  })
+}
 
-  item,
-
-  checked,
-
+function BuilderPaletteItem({
+  title,
+  emoji,
+  description,
   disabled,
-
-  onChange,
-
+  active,
+  onDragStart,
 }: {
-
-  item: CatalogComponentBase
-
-  checked: boolean
-
+  title: string
+  emoji?: string
+  description?: string
   disabled?: boolean
-
-  onChange: (checked: boolean) => void
-
+  active?: boolean
+  onDragStart: (event: React.DragEvent) => void
 }) {
-
   return (
-
-    <li className="builder-check-item">
-
-      <label className="builder-check-label">
-
-        <input
-
-          type="checkbox"
-
-          checked={checked}
-
-          disabled={disabled}
-
-          onChange={(e) => onChange(e.target.checked)}
-
-        />
-
-        <span className="builder-check-emoji" aria-hidden>{item.emoji ?? '▢'}</span>
-
-        <span className="builder-check-text">
-
-          <span className="builder-check-name">{item.name ?? item.id}</span>
-
-        </span>
-
-      </label>
-
+    <li
+      className={`builder-node-item draggable${active ? ' enabled' : ''}`}
+      draggable={!disabled}
+      onDragStart={onDragStart}
+      title={description}
+    >
+      <span className="builder-check-emoji" aria-hidden>
+        {emoji ?? '▢'}
+      </span>
+      <span>{title}</span>
     </li>
-
   )
-
 }
 
 
@@ -144,13 +131,11 @@ export function BuilderSidePanel({ expanded, onToggle }: BuilderSidePanelProps) 
 
   const workflows = workflowConfigurationStore((s) => s.workflows)
 
-  const updateDraft = workflowConfigurationStore((s) => s.updateDraft)
-
 
 
   const nodeGroup = catalogComponentGroups(catalog).find((g) => g.id === 'nodes')
   const boundaryNodes = workflowPaletteNodes(draft)
-
+  const catalogTools = catalog?.tools ?? []
   const catalogHooks = catalog?.hooks ?? []
 
 
@@ -190,16 +175,7 @@ export function BuilderSidePanel({ expanded, onToggle }: BuilderSidePanelProps) 
 
 
   const workflowLabel = (id: string) =>
-
     workflows.find((w) => w.id === id)?.label ?? id
-
-
-
-  const plannerSelection = draft ? readPlannerContext(draft) : null
-  const plannerSummaryText =
-    draft && plannerSelection ? plannerContextSummary(draft, plannerSelection) : ''
-
-
 
   return (
 
@@ -263,41 +239,25 @@ export function BuilderSidePanel({ expanded, onToggle }: BuilderSidePanelProps) 
 
                 <ul className="builder-node-list">
                   {boundaryNodes.map((item) => (
-                    <li
+                    <BuilderPaletteItem
                       key={item.id}
-                      className="builder-node-item draggable"
-                      draggable={!disabled}
+                      title={item.name ?? item.id}
+                      emoji={item.emoji}
+                      description={item.description ?? item.id}
+                      disabled={disabled}
                       onDragStart={(e) => handleNodeDragStart(e, item)}
-                      title={item.description ?? item.id}
-                    >
-                      <span className="builder-check-emoji">{item.emoji ?? '▢'}</span>
-                      <span>{item.name ?? item.id}</span>
-                    </li>
+                    />
                   ))}
                   {(nodeGroup?.items ?? []).map((item) => (
-
-                    <li
-
+                    <BuilderPaletteItem
                       key={item.id}
-
-                      className="builder-node-item draggable"
-
-                      draggable={!disabled}
-
+                      title={item.name ?? item.id}
+                      emoji={item.emoji}
+                      description={item.description ?? item.id}
+                      disabled={disabled}
                       onDragStart={(e) => handleNodeDragStart(e, item)}
-
-                      title={item.description ?? item.id}
-
-                    >
-
-                      <span className="builder-check-emoji">{item.emoji ?? '▢'}</span>
-
-                      <span>{item.name ?? item.id}</span>
-
-                    </li>
-
+                    />
                   ))}
-
                 </ul>
 
               ) : null}
@@ -348,83 +308,63 @@ export function BuilderSidePanel({ expanded, onToggle }: BuilderSidePanelProps) 
 
 
 
-          <section
-
-            className={`builder-section planner-context-section ${
-
-              expandedSections.has('plannerContext') ? 'expanded' : 'collapsed'
-
-            }`}
-
+          <ExpandableSection
+            title="Capabilities"
+            count={catalogTools.length}
+            expanded={expandedSections.has('capabilities')}
+            onToggle={() => toggleSection('capabilities')}
+            hint="Drag catalog tools onto the canvas to add them to the workflow."
           >
-
-            <button
-
-              type="button"
-
-              className="builder-section-header"
-
-              onClick={() => toggleSection('plannerContext')}
-
-              aria-expanded={expandedSections.has('plannerContext')}
-
-            >
-
-              <span className="builder-section-chevron" aria-hidden>
-
-                {expandedSections.has('plannerContext') ? '▼' : '▶'}
-
-              </span>
-
-              <span className="builder-section-title">Planner context</span>
-
-            </button>
-
-            {!expandedSections.has('plannerContext') && plannerSelection ? (
-
-              <p className="planner-context-collapsed-summary">{plannerSummaryText}</p>
-
-            ) : null}
-
-            {expandedSections.has('plannerContext') ? (
-
-              <>
-
-                <p className="builder-section-hint">
-
-                  Capabilities and delegate agents for planner context. Prompts are configured on Agent nodes.
-
-                </p>
-
-                <div className="builder-section-body">
-
-                  <PlannerContextSection
-
+            {catalogTools.length === 0 ? (
+              <p className="builder-empty">No catalog tools loaded.</p>
+            ) : (
+              <ul className="builder-node-list">
+                {catalogTools.map((tool) => (
+                  <BuilderPaletteItem
+                    key={tool.id}
+                    title={tool.name ?? tool.id}
+                    emoji={tool.emoji ?? '🔧'}
+                    description={tool.description ?? tool.id}
                     disabled={disabled}
-
-                    otherWorkflows={otherWorkflows.map((w) => ({
-
-                      id: w.id!,
-
-                      label: w.label,
-
-                      description: w.description,
-
-                    }))}
-
-                    workflowLabel={workflowLabel}
-
+                    active={draft ? isPlannerToolEnabled(draft, tool.id) : false}
+                    onDragStart={(e) => handleToolDragStart(e, tool)}
                   />
+                ))}
+              </ul>
+            )}
+          </ExpandableSection>
 
-                </div>
-
-              </>
-
-            ) : null}
-
-          </section>
-
-
+          <ExpandableSection
+            title="Agents"
+            count={otherWorkflows.length}
+            expanded={expandedSections.has('agents')}
+            onToggle={() => toggleSection('agents')}
+            hint="Drag agent presets onto the canvas to delegate to other workflows."
+          >
+            {otherWorkflows.length === 0 ? (
+              <p className="builder-empty">No other agent presets available.</p>
+            ) : (
+              <ul className="builder-node-list">
+                {otherWorkflows.map((workflow) => (
+                  <BuilderPaletteItem
+                    key={workflow.id}
+                    title={workflow.label ?? workflowLabel(workflow.id!)}
+                    emoji="🤖"
+                    description={workflow.description ?? workflow.id ?? undefined}
+                    disabled={disabled}
+                    active={draft ? isPlannerAgentEnabled(draft, workflow.id!) : false}
+                    onDragStart={(e) =>
+                      handleAgentDragStart(
+                        e,
+                        workflow.id!,
+                        workflow.label ?? workflowLabel(workflow.id!),
+                      )
+                    }
+                  />
+                ))}
+              </ul>
+            )}
+          </ExpandableSection>
 
           <ExpandableSection
 
@@ -436,37 +376,26 @@ export function BuilderSidePanel({ expanded, onToggle }: BuilderSidePanelProps) 
 
             onToggle={() => toggleSection('hooks')}
 
-            hint="Observability hooks applied by node pattern (** = all)."
+            hint="Drag observability hooks onto the canvas. Wire agent definition ports into an Agent node."
 
           >
 
-            <ul className="builder-check-list">
-
-              {catalogHooks.map((item) => (
-
-                <CatalogCheckItem
-
-                  key={item.id}
-
-                  item={item}
-
-                  checked={draft ? isCatalogHookEnabled(draft, item.id) : false}
-
-                  disabled={disabled}
-
-                  onChange={(enabled) => {
-
-                    if (!draft) return
-
-                    updateDraft(toggleCatalogHook(draft, item, enabled))
-
-                  }}
-
-                />
-
-              ))}
-
-            </ul>
+            {catalogHooks.length === 0 ? (
+              <p className="builder-empty">No catalog hooks loaded.</p>
+            ) : (
+              <ul className="builder-node-list">
+                {catalogHooks.map((hook) => (
+                  <BuilderPaletteItem
+                    key={hook.id}
+                    title={hook.name ?? hook.id}
+                    emoji={hook.emoji ?? '🪝'}
+                    description={hook.description ?? hook.id}
+                    disabled={disabled}
+                    onDragStart={(e) => handleHookDragStart(e, hook)}
+                  />
+                ))}
+              </ul>
+            )}
 
           </ExpandableSection>
 

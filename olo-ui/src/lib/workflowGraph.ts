@@ -6,9 +6,22 @@ import {
   createStartNode,
   normalizeNodeType,
 } from './boundaryNodes'
-import { findCatalogNode } from './catalogLookup'
+import { findCatalogComponent, findCatalogNode } from './catalogLookup'
 import { resolveNodePresentation } from './nodePresentation'
 import { defaultNodePosition as designerDefaultNodePosition, resolvePortColors } from './workflowDesigner'
+import {
+  catalogComponentToPorts,
+  resolveAgentHostPorts,
+  resolveCapabilityPluginPorts,
+} from './workflowNodePorts'
+import {
+  agentPresetExecution,
+  applyWorkflowGraphSemantics,
+  hookNodeConfiguration,
+  resolveDelegateAgentPorts,
+  toolNodeConfiguration,
+} from './workflowGraphSemantics'
+import type { CatalogDragPayload } from './canvasDrag'
 import {
   cloneWorkflowNodeTemplate,
   isWorkflowTemplateCatalogId,
@@ -146,7 +159,10 @@ export function createWorkflowNodeFromCatalog(
     findCatalogNode(catalog, workflowType)
     ?? findCatalogNode(catalog, catalogItem.id)
     ?? (catalogItem.kind === 'NODE' ? (catalogItem as CatalogNode) : null)
-  const ports = catalogNode ? catalogPortsToWorkflowPorts(catalogNode) : []
+  const catalogPorts = catalogNode
+    ? (catalogPortsToWorkflowPorts(catalogNode) ?? [])
+    : catalogComponentToPorts(catalogItem)
+  const ports: WorkflowPort[] = resolveAgentHostPorts(normalized, [], catalogPorts)
 
   return {
     id,
@@ -159,6 +175,66 @@ export function createWorkflowNodeFromCatalog(
       designer: { position },
     },
   }
+}
+
+export function createWorkflowNodeFromDrag(
+  payload: CatalogDragPayload,
+  catalogItem: CatalogComponentBase,
+  position: { x: number; y: number },
+  existingIds: Iterable<string>,
+  catalog: StudioCatalog | null,
+  workflow: WorkflowDocument,
+): WorkflowNode {
+  if (payload.kind === 'TOOL') {
+    const id = uniqueNodeId(catalogItem.name ?? 'tool', existingIds)
+    return {
+      id,
+      type: 'TOOL',
+      label: catalogItem.name?.trim() || undefined,
+      ports: resolveCapabilityPluginPorts('TOOL', [], catalogComponentToPorts(catalogItem)),
+      reads: [],
+      writes: [],
+      configuration: toolNodeConfiguration(catalogItem, position),
+    }
+  }
+
+  if (payload.kind === 'HOOK') {
+    const id = uniqueNodeId(catalogItem.name ?? 'hook', existingIds)
+    return {
+      id,
+      type: 'HOOK',
+      label: catalogItem.name?.trim() || undefined,
+      ports: resolveCapabilityPluginPorts('HOOK', [], catalogComponentToPorts(catalogItem)),
+      reads: [],
+      writes: [],
+      configuration: hookNodeConfiguration(catalogItem, position),
+    }
+  }
+
+  if (payload.kind === 'AGENT') {
+    const id = uniqueNodeId(payload.name ?? payload.catalogId, existingIds)
+    return {
+      id,
+      type: 'AGENT',
+      label: payload.name?.trim() || undefined,
+      ports: resolveDelegateAgentPorts(catalog, payload.catalogId),
+      execution: agentPresetExecution(payload.catalogId),
+      reads: [],
+      writes: [],
+      configuration: {
+        delegateAgentId: payload.catalogId,
+        designer: { position },
+      },
+    }
+  }
+
+  return createWorkflowNodeFromCatalog(
+    catalogItem,
+    position,
+    existingIds,
+    catalog,
+    workflow,
+  )
 }
 
 function workflowEdgeEndpoints(edge: WorkflowEdge): { source: string; target: string; sourceHandle?: string; targetHandle?: string } | null {
@@ -183,9 +259,13 @@ export function workflowToFlow(
   const portColors = resolvePortColors(workflow)
   const nodes: Node<CatalogFlowNodeData>[] = workflowNodes.map((node, index) => {
     const workflowType = normalizeNodeType(node.type)
-    const descriptor = findCatalogNode(catalog, workflowType, workflow)
+    const descriptor = findCatalogComponent(catalog, workflowType, node)
     const presentation = resolveNodePresentation(workflow, node, catalog)
     const position = readDesignerPosition(node) ?? defaultNodePosition(workflow, index)
+    const catalogId =
+      (typeof node.configuration?.toolId === 'string' && node.configuration.toolId)
+      || (typeof node.configuration?.hookId === 'string' && node.configuration.hookId)
+      || descriptor?.id
     return {
       id: node.id,
       type: FLOW_NODE_TYPE,
@@ -195,7 +275,7 @@ export function workflowToFlow(
         label: resolveNodeDisplayLabel(node, catalog),
         emoji: presentation.emoji ?? descriptor?.emoji,
         workflowType,
-        catalogId: descriptor?.id,
+        catalogId,
         workflowPorts: node.ports,
         presentation,
         readOnly,
@@ -225,6 +305,7 @@ export function flowToWorkflow(
   flowNodes: Node<CatalogFlowNodeData>[],
   flowEdges: Edge[],
   workflow: WorkflowDocument,
+  catalog: StudioCatalog | null = null,
 ): WorkflowDocument {
   const existingById = new Map((workflow.nodes ?? []).map((n) => [n.id, n]))
 
@@ -245,6 +326,7 @@ export function flowToWorkflow(
         typeof flowNode.data.label === 'string' && flowNode.data.label.trim()
           ? flowNode.data.label.trim()
           : existing?.label,
+      execution: existing?.execution,
       configuration,
       ports: existing?.ports ?? [],
       reads: existing?.reads ?? [],
@@ -259,9 +341,12 @@ export function flowToWorkflow(
     ...(edge.targetHandle ? { targetPortId: edge.targetHandle } : {}),
   }))
 
-  return {
-    ...workflow,
-    nodes,
-    edges,
-  }
+  return applyWorkflowGraphSemantics(
+    {
+      ...workflow,
+      nodes,
+      edges,
+    },
+    catalog,
+  )
 }

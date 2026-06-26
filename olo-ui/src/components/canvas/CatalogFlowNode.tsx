@@ -3,75 +3,98 @@ import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { catalogStore } from '../../store/catalogStore'
 import { workflowConfigurationStore } from '../../store/workflowConfigurationStore'
 import { nodeTooltipLines } from '../../lib/canvasLabels'
-import { findCatalogNode } from '../../lib/catalogLookup'
+import { findCatalogComponent } from '../../lib/catalogLookup'
 import {
   portDisplayColor,
   portDisplayLabel,
   portTooltipLines,
 } from '../../lib/portConnection'
 import { resolvePortColors } from '../../lib/workflowDesigner'
+import {
+  catalogComponentToPorts,
+  groupPortsBySide,
+  isDelegateAgentNode,
+  isMessagePortId,
+  PLANNER_ROUTED_MESSAGE_PORT_COLOR,
+  resolveNodePorts,
+  usesPlannerRoutedMessagePorts,
+  type PortSide,
+} from '../../lib/workflowNodePorts'
 import type { CatalogFlowNodeData } from '../../lib/workflowGraph'
 import type { WorkflowPort } from '../../types/workflow'
+import { ChildWorkflowNodeBody } from './ChildWorkflowNodeBody'
 import { NodeInlineLabel } from './NodeInlineLabel'
 import { NodeInlineProperties } from './NodeInlineProperties'
 
-function handlePosition(side?: string, fallback: Position = Position.Left): Position {
-  switch (side?.toUpperCase()) {
+function handlePosition(side: PortSide): Position {
+  switch (side) {
     case 'TOP':
       return Position.Top
     case 'BOTTOM':
       return Position.Bottom
     case 'RIGHT':
       return Position.Right
-    case 'LEFT':
-      return Position.Left
     default:
-      return fallback
+      return Position.Left
   }
 }
 
-function portsFromWorkflow(workflowPorts?: WorkflowPort[]): {
-  inputs: WorkflowPort[]
-  outputs: WorkflowPort[]
-} {
-  if (!workflowPorts?.length) return { inputs: [], outputs: [] }
-  return {
-    inputs: workflowPorts.filter((p) => p.direction === 'INPUT'),
-    outputs: workflowPorts.filter((p) => p.direction === 'OUTPUT'),
-  }
+function portSlotPercent(index: number, count: number): string {
+  return `${((index + 1) / (count + 1)) * 100}%`
 }
 
 function PortRow({
   port,
-  type,
-  fallbackPosition,
-  className,
+  side,
+  index,
+  count,
   portColors,
+  inline = false,
+  dimmed = false,
 }: {
   port: WorkflowPort
-  type: 'source' | 'target'
-  fallbackPosition: Position
-  className: string
+  side: PortSide
+  index: number
+  count: number
   portColors: Record<string, string>
+  inline?: boolean
+  dimmed?: boolean
 }) {
-  const color = portDisplayColor(port, portColors)
-  const isInput = type === 'target'
-  const position = handlePosition(port.ui?.position, fallbackPosition)
-  const tooltipLines = portTooltipLines(port)
+  const color = dimmed
+    ? PLANNER_ROUTED_MESSAGE_PORT_COLOR
+    : portDisplayColor(port, portColors)
+  const isInput = port.direction === 'INPUT'
+  const position = handlePosition(side)
+  const tooltipLines = [
+    ...portTooltipLines(port),
+    ...(dimmed ? ['Connected dynamically via planner/agent at runtime'] : []),
+  ]
+  const slot = portSlotPercent(index, count)
+  const handleStyle: CSSProperties = inline
+    ? { top: '50%', ...(color ? { background: color, borderColor: color } : {}) }
+    : side === 'LEFT' || side === 'RIGHT'
+      ? { top: slot, ...(color ? { background: color, borderColor: color } : {}) }
+      : { left: slot, ...(color ? { background: color, borderColor: color } : {}) }
+
+  const rowClass = [
+    inline
+      ? `catalog-flow-port-row ${isInput ? 'catalog-flow-port-row-input' : 'catalog-flow-port-row-output'} catalog-flow-port-row-inline-${side.toLowerCase()}`
+      : `catalog-flow-port-row catalog-flow-port-row-side-${side.toLowerCase()}`,
+    dimmed ? 'catalog-flow-port-row-dimmed' : '',
+  ].filter(Boolean).join(' ')
 
   return (
     <div
-      className={`catalog-flow-port-row ${isInput ? 'catalog-flow-port-row-input' : 'catalog-flow-port-row-output'}`}
+      className={rowClass}
+      style={inline ? undefined : ({ '--port-slot': slot } as CSSProperties)}
     >
       <Handle
-        type={type}
+        type={isInput ? 'target' : 'source'}
         position={position}
         id={port.id}
-        className={className}
-        style={{
-          top: '50%',
-          ...(color ? { background: color, borderColor: color } : {}),
-        }}
+        isConnectable={!dimmed}
+        className={`catalog-flow-handle catalog-flow-handle-${isInput ? 'input' : 'output'}${dimmed ? ' catalog-flow-handle-dimmed' : ''}`}
+        style={handleStyle}
         aria-label={tooltipLines.join('. ')}
       />
       <span
@@ -94,6 +117,82 @@ function PortRow({
   )
 }
 
+function BoundaryPorts({
+  side,
+  ports,
+  portColors,
+}: {
+  side: 'TOP' | 'BOTTOM'
+  ports: WorkflowPort[]
+  portColors: Record<string, string>
+}) {
+  if (ports.length === 0) return null
+  return (
+    <div className={`catalog-flow-node-boundary catalog-flow-node-boundary-${side.toLowerCase()}`}>
+      {ports.map((port, index) => (
+        <PortRow
+          key={`${side}-${port.id}`}
+          port={port}
+          side={side}
+          index={index}
+          count={ports.length}
+          portColors={portColors}
+        />
+      ))}
+    </div>
+  )
+}
+
+function InlineLateralPorts({
+  leftPorts,
+  rightPorts,
+  portColors,
+  dimMessagePorts,
+}: {
+  leftPorts: WorkflowPort[]
+  rightPorts: WorkflowPort[]
+  portColors: Record<string, string>
+  dimMessagePorts: boolean
+}) {
+  if (leftPorts.length === 0 && rightPorts.length === 0) return null
+  return (
+    <div className="catalog-flow-node-ports">
+      {leftPorts.length > 0 ? (
+        <div className="catalog-flow-node-ports-column catalog-flow-node-ports-column-input">
+          {leftPorts.map((port, index) => (
+            <PortRow
+              key={`left-${port.id}`}
+              port={port}
+              side="LEFT"
+              index={index}
+              count={leftPorts.length}
+              portColors={portColors}
+              inline
+              dimmed={dimMessagePorts && isMessagePortId(port.id)}
+            />
+          ))}
+        </div>
+      ) : null}
+      {rightPorts.length > 0 ? (
+        <div className="catalog-flow-node-ports-column catalog-flow-node-ports-column-output">
+          {rightPorts.map((port, index) => (
+            <PortRow
+              key={`right-${port.id}`}
+              port={port}
+              side="RIGHT"
+              index={index}
+              count={rightPorts.length}
+              portColors={portColors}
+              inline
+              dimmed={dimMessagePorts && isMessagePortId(port.id)}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 function CatalogFlowNodeComponent({ id, data, selected }: NodeProps) {
   const catalog = catalogStore.getState().catalog
   const draft = workflowConfigurationStore((s) => s.draft)
@@ -103,42 +202,48 @@ function CatalogFlowNodeComponent({ id, data, selected }: NodeProps) {
   const workflowNode = draft?.nodes?.find((n) => n.id === id)
   const presentation = nodeData.presentation
   const portColors = resolvePortColors(draft)
-  const descriptor = findCatalogNode(catalog, nodeData.workflowType, draft)
-  const workflowPortGroups = portsFromWorkflow(nodeData.workflowPorts)
-  const inputs =
-    workflowPortGroups.inputs.length > 0
-      ? workflowPortGroups.inputs
-      : (descriptor?.inputs ?? []).map((port) => ({
-          id: port.id,
-          label: port.label ?? port.name ?? port.id,
-          name: port.name,
-          shortDescription: port.shortDescription,
-          schema: port.schema ?? 'any',
-          type: port.type ?? port.schema ?? 'any',
-          acceptType: port.acceptType ?? port.type ?? port.schema ?? 'any',
-          direction: 'INPUT' as const,
-          required: port.required,
-          minConnections: port.minConnections,
-          maxConnections: port.maxConnections,
-          ui: port.ui,
-        }))
-  const outputs =
-    workflowPortGroups.outputs.length > 0
-      ? workflowPortGroups.outputs
-      : (descriptor?.outputs ?? []).map((port) => ({
-          id: port.id,
-          label: port.label ?? port.name ?? port.id,
-          name: port.name,
-          shortDescription: port.shortDescription,
-          schema: port.schema ?? 'any',
-          type: port.type ?? port.schema ?? 'any',
-          direction: 'OUTPUT' as const,
-          required: port.required,
-          minConnections: port.minConnections,
-          maxConnections: port.maxConnections,
-          ui: port.ui,
-        }))
+  const descriptor = findCatalogComponent(catalog, nodeData.workflowType, workflowNode)
+  const catalogPorts = descriptor ? catalogComponentToPorts(descriptor) : []
+  const mergedPorts = resolveNodePorts(
+    nodeData.workflowType,
+    nodeData.workflowPorts,
+    catalogPorts,
+    workflowNode?.configuration,
+  )
+  const portsBySide = groupPortsBySide(
+    mergedPorts.length > 0 ? mergedPorts : catalogPorts,
+  )
   const tooltipLines = nodeTooltipLines(id, nodeData, descriptor)
+
+  const dimMessagePorts = usesPlannerRoutedMessagePorts(
+    nodeData.workflowType,
+    workflowNode?.configuration,
+  )
+  const isChildWorkflow = isDelegateAgentNode(workflowNode?.configuration)
+  const delegateAgentId =
+    typeof workflowNode?.configuration?.delegateAgentId === 'string'
+      ? workflowNode.configuration.delegateAgentId
+      : ''
+  const messageLeftPorts = portsBySide.LEFT.filter((port) => isMessagePortId(port.id))
+  const messageRightPorts = portsBySide.RIGHT.filter((port) => isMessagePortId(port.id))
+
+  const renderPortRow = (
+    port: WorkflowPort,
+    side: PortSide,
+    index: number,
+    count: number,
+  ) => (
+    <PortRow
+      key={`${side}-${port.id}`}
+      port={port}
+      side={side}
+      index={index}
+      count={count}
+      portColors={portColors}
+      inline
+      dimmed={dimMessagePorts && isMessagePortId(port.id)}
+    />
+  )
 
   const nodeStyle = {
     '--catalog-node-min-width': presentation ? `${presentation.width}px` : undefined,
@@ -147,9 +252,16 @@ function CatalogFlowNodeComponent({ id, data, selected }: NodeProps) {
     '--catalog-node-selection-border': presentation?.selectionBorder,
   } as CSSProperties
 
+  const hasLateralPorts =
+    !isChildWorkflow && (portsBySide.LEFT.length > 0 || portsBySide.RIGHT.length > 0)
+
   return (
     <div
-      className={`catalog-flow-node ${selected ? 'selected' : ''}`}
+      className={[
+        'catalog-flow-node',
+        isChildWorkflow ? 'catalog-flow-node-child-workflow' : '',
+        selected ? 'selected' : '',
+      ].filter(Boolean).join(' ')}
       style={nodeStyle}
     >
       <div className="catalog-flow-node-tooltip" role="tooltip">
@@ -158,64 +270,59 @@ function CatalogFlowNodeComponent({ id, data, selected }: NodeProps) {
         ))}
       </div>
 
+      <BoundaryPorts side="TOP" ports={portsBySide.TOP} portColors={portColors} />
+
       <div className="catalog-flow-node-body">
-        <div className="catalog-flow-node-header">
-          <span className="catalog-flow-node-emoji" aria-hidden>
-            {presentation?.emoji ?? nodeData.emoji ?? descriptor?.emoji ?? '▢'}
-          </span>
-          <div className="catalog-flow-node-titles">
-            <NodeInlineLabel
-              nodeId={id}
-              label={nodeData.label}
-              placeholder={id}
-              readOnly={readOnly}
-              onChange={updateDraft}
-            />
-            <span className="catalog-flow-node-type">{presentation?.typeLabel ?? nodeData.workflowType}</span>
-          </div>
-        </div>
-
-        <div className="catalog-flow-node-ports">
-          {inputs.length > 0 ? (
-            <div className="catalog-flow-node-ports-column catalog-flow-node-ports-column-input">
-              {inputs.map((port) => (
-                <PortRow
-                  key={`in-${port.id}`}
-                  port={port}
-                  type="target"
-                  fallbackPosition={Position.Left}
-                  className="catalog-flow-handle catalog-flow-handle-input"
-                  portColors={portColors}
-                />
-              ))}
-            </div>
-          ) : null}
-          {outputs.length > 0 ? (
-            <div className="catalog-flow-node-ports-column catalog-flow-node-ports-column-output">
-              {outputs.map((port) => (
-                <PortRow
-                  key={`out-${port.id}`}
-                  port={port}
-                  type="source"
-                  fallbackPosition={Position.Right}
-                  className="catalog-flow-handle catalog-flow-handle-output"
-                  portColors={portColors}
-                />
-              ))}
-            </div>
-          ) : null}
-        </div>
-
-        {workflowNode && draft ? (
-          <NodeInlineProperties
-            workflow={draft}
-            node={workflowNode}
-            catalog={catalog}
+        {isChildWorkflow ? (
+          <ChildWorkflowNodeBody
+            delegateAgentId={delegateAgentId}
+            nodeLabel={nodeData.label}
+            leftPorts={messageLeftPorts}
+            rightPorts={messageRightPorts}
             readOnly={readOnly}
-            onChange={updateDraft}
+            renderPortRow={renderPortRow}
           />
-        ) : null}
+        ) : (
+          <>
+            <div className="catalog-flow-node-header">
+              <span className="catalog-flow-node-emoji" aria-hidden>
+                {presentation?.emoji ?? nodeData.emoji ?? descriptor?.emoji ?? '▢'}
+              </span>
+              <div className="catalog-flow-node-titles">
+                <NodeInlineLabel
+                  nodeId={id}
+                  label={nodeData.label}
+                  placeholder={id}
+                  readOnly={readOnly}
+                  onChange={updateDraft}
+                />
+                <span className="catalog-flow-node-type">{presentation?.typeLabel ?? nodeData.workflowType}</span>
+              </div>
+            </div>
+
+            {hasLateralPorts ? (
+              <InlineLateralPorts
+                leftPorts={portsBySide.LEFT}
+                rightPorts={portsBySide.RIGHT}
+                portColors={portColors}
+                dimMessagePorts={dimMessagePorts}
+              />
+            ) : null}
+
+            {workflowNode && draft ? (
+              <NodeInlineProperties
+                workflow={draft}
+                node={workflowNode}
+                catalog={catalog}
+                readOnly={readOnly}
+                onChange={updateDraft}
+              />
+            ) : null}
+          </>
+        )}
       </div>
+
+      <BoundaryPorts side="BOTTOM" ports={portsBySide.BOTTOM} portColors={portColors} />
     </div>
   )
 }

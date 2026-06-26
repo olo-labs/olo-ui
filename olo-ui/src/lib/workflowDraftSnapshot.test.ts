@@ -6,7 +6,7 @@ import {
   normalizeWorkflowDraft,
   workflowDraftSnapshot,
 } from './workflowDraftSnapshot'
-import { mergeWorkflowCanvasView } from './workflowCanvasView'
+import { mergeWorkflowCanvasView, readWorkflowCanvasView } from './workflowCanvasView'
 import type { WorkflowDocument } from '../types/workflow'
 
 const baseWorkflow: WorkflowDocument = {
@@ -83,8 +83,13 @@ describe('workflowDraftSnapshot', () => {
     const agent = JSON.parse(fs.readFileSync(agentPath, 'utf8')) as WorkflowDocument
     const normalized = normalizeWorkflowDraft(agent)
     const snapshot = workflowDraftSnapshot(normalized)
+    const existingView = readWorkflowCanvasView(normalized)
     const afterMount = mergeWorkflowCanvasView(normalized, {
-      viewport: { x: 125.003, y: 176.001, zoom: 1 },
+      viewport: {
+        x: (existingView?.viewport?.x ?? 0) + 0.003,
+        y: (existingView?.viewport?.y ?? 0) + 0.001,
+        zoom: existingView?.viewport?.zoom ?? 1,
+      },
       size: { width: 1280, height: 800 },
     })
 

@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { catalogStore } from '../store/catalogStore'
 import type { CatalogParameter } from '../types/catalog'
 import type { WorkflowDocument } from '../types/workflow'
 import { workflowVariables } from '../lib/workflowResources'
@@ -36,6 +37,7 @@ export function WorkflowConfigurationEditor({
     () => (workflow ? workflowVariables(workflow).map((variable) => variable.name) : []),
     [workflow],
   )
+  const catalogTools = catalogStore((state) => state.catalog?.tools ?? [])
 
   if (!workflow) {
     return <p className="tenant-config-form-empty">Select a workflow preset to edit.</p>
@@ -55,7 +57,10 @@ export function WorkflowConfigurationEditor({
               <WorkflowParameterField
                 descriptor={descriptor}
                 value={workflow.parameters?.[descriptor.id]?.defaultValue}
+                workflow={workflow}
                 workflowVariableNames={workflowVariableNames}
+                catalogTools={catalogTools}
+                onWorkflowChange={onChange}
                 onChange={(value) => onChange(updateWorkflowParameterValue(workflow, descriptor.id, value))}
               />
               {descriptor.ui?.help || descriptor.description ? (

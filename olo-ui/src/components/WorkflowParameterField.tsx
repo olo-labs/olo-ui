@@ -1,6 +1,12 @@
-import type { CatalogParameter } from '../types/catalog'
+import type { CatalogParameter, CatalogComponentBase } from '../types/catalog'
 import type { WorkflowDocument, WorkflowParameter } from '../types/workflow'
 import { agentModelOptions } from '../lib/workflowModelProviders'
+import { catalogStore } from '../store/catalogStore'
+import { workflowConfigurationStore } from '../store/workflowConfigurationStore'
+import {
+  readPlannerContext,
+  updatePlannerContext,
+} from '../lib/plannerContext'
 import { PromptTokenTextarea } from './PromptTokenTextarea'
 import {
   SYSTEM_PROMPT_PARAMETER_ID,
@@ -47,6 +53,8 @@ export function WorkflowParameterField({
   compact = false,
   workflowVariableNames = [],
   workflow,
+  onWorkflowChange,
+  catalogTools,
 }: {
   descriptor: CatalogParameter
   value: unknown
@@ -54,6 +62,8 @@ export function WorkflowParameterField({
   compact?: boolean
   workflowVariableNames?: string[]
   workflow?: WorkflowDocument | null
+  onWorkflowChange?: (workflow: WorkflowDocument) => void
+  catalogTools?: CatalogComponentBase[]
 }) {
   const widget = descriptor.ui?.widget ?? 'STRING'
   const label = descriptor.label ?? descriptor.id
@@ -128,6 +138,15 @@ export function WorkflowParameterField({
 
   if (widget === 'TEXTAREA' && descriptor.id === SYSTEM_PROMPT_PARAMETER_ID) {
     const stringValue = value == null ? '' : String(value)
+    const plannerContext = workflow ? readPlannerContext(workflow) : null
+    const resolvedCatalogTools = catalogTools ?? catalogStore.getState().catalog?.tools ?? []
+    const workflowSummaries = workflowConfigurationStore.getState().workflows
+
+    const patchPlannerContext = (patch: { injectCapabilities?: boolean; injectAgents?: boolean }) => {
+      if (!workflow || !onWorkflowChange) return
+      onWorkflowChange(updatePlannerContext(workflow, patch, resolvedCatalogTools))
+    }
+
     return (
       <div className={compact ? 'catalog-flow-param-row catalog-flow-param-row-stack' : 'workflow-param-row-stack'}>
         <span className={compact ? 'catalog-flow-param-label' : 'tenant-config-label'}>{label}</span>
@@ -141,6 +160,39 @@ export function WorkflowParameterField({
           textareaClassName={compact ? 'catalog-flow-param-textarea' : 'tenant-config-input workflow-param-textarea'}
           onChange={(next) => onChange(next)}
         />
+        {workflow && onWorkflowChange && plannerContext ? (
+          <div className="prompt-inject-options">
+            <label className="prompt-inject-option">
+              <input
+                type="checkbox"
+                checked={plannerContext.injectCapabilities}
+                onChange={(e) => patchPlannerContext({ injectCapabilities: e.target.checked })}
+              />
+              <span>Tools</span>
+            </label>
+            <label className="prompt-inject-option">
+              <input
+                type="checkbox"
+                checked={plannerContext.injectAgents}
+                onChange={(e) => patchPlannerContext({ injectAgents: e.target.checked })}
+              />
+              <span>Agents</span>
+            </label>
+            <p className="prompt-inject-hint">
+              When enabled, tool and agent definitions are appended to the prompt at run time, in
+              addition to {'{tools}'} and {'{agents}'} placeholders in your template.
+              {plannerContext.selectedTools.length > 0 || plannerContext.selectedAgents.length > 0 ? (
+                <>
+                  {' '}
+                  Using {plannerContext.selectedTools.length} tool
+                  {plannerContext.selectedTools.length === 1 ? '' : 's'} and{' '}
+                  {plannerContext.selectedAgents.length} agent
+                  {plannerContext.selectedAgents.length === 1 ? '' : 's'} from planner context.
+                </>
+              ) : null}
+            </p>
+          </div>
+        ) : null}
       </div>
     )
   }

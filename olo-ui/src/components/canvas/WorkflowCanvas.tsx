@@ -26,17 +26,19 @@ import {
   resolveConnectionLineColor,
 } from '../../lib/canvasLabels'
 import { arePortsCompatible } from '../../lib/portConnection'
+import { isPlannerRoutedMessagePort } from '../../lib/workflowNodePorts'
 import { resolveNodePort } from '../../lib/portResolve'
 import {
   FLOW_EDGE_TYPE,
   FLOW_NODE_TYPE,
   catalogIdToWorkflowType,
-  createWorkflowNodeFromCatalog,
+  createWorkflowNodeFromDrag,
   flowToWorkflow,
   resolveNodeDisplayLabel,
   workflowToFlow,
   type CatalogFlowNodeData,
 } from '../../lib/workflowGraph'
+import type { CatalogComponentBase } from '../../types/catalog'
 import {
   mergeWorkflowCanvasView,
   readWorkflowCanvasView,
@@ -187,9 +189,9 @@ function WorkflowCanvasInner({ readOnly = false }: WorkflowCanvasProps) {
   const persistGraph = useCallback(
     (nextNodes: Node<CatalogFlowNodeData>[], nextEdges: Edge[]) => {
       if (!draft || syncingRef.current || readOnly) return
-      updateDraft(flowToWorkflow(nextNodes, nextEdges, draft))
+      updateDraft(flowToWorkflow(nextNodes, nextEdges, draft, catalog))
     },
-    [draft, readOnly, updateDraft],
+    [catalog, draft, readOnly, updateDraft],
   )
 
   const onConnect = useCallback(
@@ -248,6 +250,24 @@ function WorkflowCanvasInner({ readOnly = false }: WorkflowCanvasProps) {
       const sourceNode = nodes.find((node) => node.id === connection.source)
       const targetNode = nodes.find((node) => node.id === connection.target)
       if (!sourceNode || !targetNode) return false
+
+      const sourceWorkflowNode = draft?.nodes?.find((node) => node.id === sourceNode.id)
+      const targetWorkflowNode = draft?.nodes?.find((node) => node.id === targetNode.id)
+      if (
+        isPlannerRoutedMessagePort(
+          sourceNode.data.workflowType,
+          connection.sourceHandle,
+          sourceWorkflowNode?.configuration,
+        )
+        || isPlannerRoutedMessagePort(
+          targetNode.data.workflowType,
+          connection.targetHandle,
+          targetWorkflowNode?.configuration,
+        )
+      ) {
+        return false
+      }
+
       const outputPort = resolveNodePort(sourceNode, connection.sourceHandle, 'OUTPUT', catalog, draft)
       const inputPort = resolveNodePort(targetNode, connection.targetHandle, 'INPUT', catalog, draft)
       if (!outputPort || !inputPort) return true
@@ -363,23 +383,70 @@ function WorkflowCanvasInner({ readOnly = false }: WorkflowCanvasProps) {
       if (readOnly || !draft) return
 
       const payload = readCatalogDrag(event.dataTransfer)
-      if (!payload || payload.kind !== 'NODE') return
+      if (!payload) return
 
       const position = screenToFlowPosition({ x: event.clientX, y: event.clientY })
       const existingIds = (draft.nodes ?? []).map((n) => n.id)
       const paletteNodes = workflowPaletteNodes(draft)
-      const catalogItem =
-        catalog?.nodes?.find((n) => n.id === payload.catalogId)
-        ?? paletteNodes.find((n) => n.id === payload.catalogId)
+
+      let catalogItem: CatalogComponentBase | undefined
+      if (payload.kind === 'NODE') {
+        catalogItem =
+          catalog?.nodes?.find((n) => n.id === payload.catalogId)
+          ?? paletteNodes.find((n) => n.id === payload.catalogId)
+      } else if (payload.kind === 'TOOL') {
+        catalogItem = catalog?.tools?.find((tool) => tool.id === payload.catalogId)
+      } else if (payload.kind === 'HOOK') {
+        catalogItem = catalog?.hooks?.find((hook) => hook.id === payload.catalogId)
+      } else if (payload.kind === 'AGENT') {
+        catalogItem = {
+          id: payload.catalogId,
+          kind: 'NODE',
+          name: payload.name ?? payload.catalogId,
+          emoji: payload.emoji ?? '🤖',
+        }
+      }
+
       if (!catalogItem) return
 
-      const workflowNode = createWorkflowNodeFromCatalog(
+      const workflowNode = createWorkflowNodeFromDrag(
+        payload,
         catalogItem,
         position,
         existingIds,
         catalog,
         draft,
       )
+
+      if (payload.kind !== 'NODE') {
+        const presentation = resolveNodePresentation(draft, workflowNode, catalog)
+        const flowNode: Node<CatalogFlowNodeData> = {
+          id: workflowNode.id,
+          type: FLOW_NODE_TYPE,
+          position,
+          data: {
+            label: resolveNodeDisplayLabel(workflowNode, catalog),
+            emoji: presentation.emoji ?? catalogItem.emoji ?? payload.emoji,
+            workflowType: workflowNode.type,
+            catalogId: catalogItem.id,
+            workflowPorts: workflowNode.ports,
+            presentation,
+            readOnly,
+          },
+        }
+
+        setNodes((nds) => {
+          const next = [...nds, flowNode]
+          const updatedWorkflow = flowToWorkflow(next, edges, {
+            ...draft,
+            nodes: [...(draft.nodes ?? []), workflowNode],
+          }, catalog)
+          updateDraft(updatedWorkflow)
+          return next
+        })
+        return
+      }
+
       const workflowType = isWorkflowTemplateCatalogId(catalogItem.id)
         ? workflowTypeFromTemplateCatalogId(catalogItem.id)
         : catalogIdToWorkflowType(catalogItem.id)
@@ -405,7 +472,7 @@ function WorkflowCanvasInner({ readOnly = false }: WorkflowCanvasProps) {
         const updatedWorkflow = flowToWorkflow(next, edges, {
           ...draft,
           nodes: [...(draft.nodes ?? []), workflowNode],
-        })
+        }, catalog)
         updateDraft(updatedWorkflow)
         return next
       })

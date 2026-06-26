@@ -9,12 +9,6 @@ import {
   readEndOutputMapping,
   readStartInputMappings,
 } from '../../lib/boundaryNodes'
-import {
-  applyAgentPromptRef,
-  plannerPromptById,
-  readAgentPromptRef,
-  readPlannerContext,
-} from '../../lib/plannerContext'
 import { NodeLabelInput } from './NodeLabelInput'
 import { workflowVariables } from '../../lib/workflowResources'
 import {
@@ -136,10 +130,6 @@ export function CanvasNodeProperties({
   }
 
   if (isAgentNodeType(node.type)) {
-    const plannerContext = readPlannerContext(workflow)
-    const prompts = plannerContext.prompts
-    const promptRef = readAgentPromptRef(node, workflow)
-    const selectedPrompt = plannerPromptById(plannerContext, promptRef)
     const options = agentModelOptions(workflow)
     const selected = readAgentModelSelection(node, workflow)
     const selectedOption = options.find((option) => option.value === selected)
@@ -149,35 +139,10 @@ export function CanvasNodeProperties({
       <div className="canvas-node-properties">
         <div className="side-panel-title">Agent node</div>
         <p className="canvas-node-properties-hint">
-          Choose the planner prompt, model routing, and provider for this agent.
+          Choose model routing and provider for this agent. Edit the system prompt on the canvas node or in workflow parameters.
         </p>
         {labelField}
         <p className="canvas-node-properties-meta">Node id: {node.id}</p>
-        {prompts.length === 0 ? (
-          <p className="builder-empty">Add planner prompts in the Builder panel first.</p>
-        ) : (
-          <label className="canvas-node-select-field">
-            <span>Planner prompt</span>
-            <select
-              className="workflow-canvas-select"
-              value={promptRef}
-              onChange={(e) => onChange(applyAgentPromptRef(workflow, node.id, e.target.value))}
-            >
-              {prompts.map((prompt) => (
-                <option key={prompt.id} value={prompt.id}>
-                  {prompt.name}
-                  {prompt.id === plannerContext.defaultPromptId ? ' (default)' : ''}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        {selectedPrompt ? (
-          <p className="canvas-node-properties-meta">
-            {workflowVariables(workflow).length} workflow variable
-            {workflowVariables(workflow).length === 1 ? '' : 's'}
-          </p>
-        ) : null}
         {options.length === 0 ? (
           <p className="builder-empty">Add model providers in the Builder panel first.</p>
         ) : (

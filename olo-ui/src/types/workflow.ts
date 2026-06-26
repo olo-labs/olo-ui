@@ -167,10 +167,6 @@ export interface WorkflowDocument {
 
   modelRouting?: ModelRouting[]
 
-  prompts?: WorkflowPlannerPrompt[]
-
-  defaultPromptId?: string
-
   metadata?: Record<string, unknown>
 
   [key: string]: unknown
@@ -322,31 +318,6 @@ export interface AgentReference {
 
 
 
-export type WorkflowPlannerPromptParameterType = 'string' | 'number' | 'boolean' | 'object'
-
-export interface WorkflowPlannerPromptParameter {
-
-  name: string
-
-  type?: WorkflowPlannerPromptParameterType
-
-  required?: boolean
-
-}
-
-export interface WorkflowPlannerPrompt {
-
-  id: string
-
-  name: string
-
-  promptTemplate: string
-
-  /** @deprecated Derived from workflow {@code variables[]} at runtime — not persisted on prompts. */
-  parameters?: WorkflowPlannerPromptParameter[]
-
-}
-
 export interface ModelProvider {
 
   id: string
@@ -395,11 +366,35 @@ export interface WorkflowNode {
 
   configuration?: Record<string, unknown>
 
+  execution?: WorkflowNodeExecution
+
   ports?: WorkflowPort[]
 
   reads?: unknown[]
 
   writes?: unknown[]
+
+}
+
+export interface WorkflowNodeExecution {
+
+  executionKind?: string
+
+  executionModel?: string
+
+  routers?: unknown[]
+
+  workflowRef?: {
+
+    workflowId?: string
+
+    version?: string
+
+    inputMapping?: Record<string, unknown>
+
+    outputMapping?: Record<string, unknown>
+
+  }
 
 }
 

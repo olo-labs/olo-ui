@@ -5,7 +5,7 @@
 export const PORT_WILDCARDS = ['any', '*'] as const
 
 /** Closed vocabulary for port wire types — keep in sync with {@code org.olo.definition.port.PortWireType}. */
-export const PORT_WIRE_TYPES = ['any', 'message'] as const
+export const PORT_WIRE_TYPES = ['any', 'message', 'capabilities', 'agent-plug'] as const
 
 export type PortWireTypeName = (typeof PORT_WIRE_TYPES)[number]
 
@@ -58,6 +58,8 @@ const PRIMITIVE_ALIASES: Record<string, string> = {
 const TYPE_COLORS: Record<string, string> = {
   any: '#94a3b8',
   message: '#ef4444',
+  capabilities: '#22c55e',
+  'agent-plug': '#a855f7',
   string: '#a3e635',
   number: '#38bdf8',
   integer: '#38bdf8',

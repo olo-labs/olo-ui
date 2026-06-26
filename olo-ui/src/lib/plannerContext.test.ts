@@ -1,252 +1,137 @@
 import { describe, expect, it } from 'vitest'
 import {
-  DEFAULT_PROMPT_ID,
-  DEFAULT_PROMPT_TEMPLATE,
-  PLANNER_MACRO_CAPABILITIES,
-  addPlannerPrompt,
-  applyAgentPromptRef,
-  applyPlannerContext,
-  extractPromptPlaceholders,
   generatePlannerPrompt,
-  plannerParametersFromVariables,
-  readAgentPromptRef,
+  PLANNER_MACRO_AGENTS,
+  PLANNER_MACRO_CAPABILITIES,
   readPlannerContext,
-  removePlannerPrompt,
   togglePlannerAgent,
   togglePlannerTool,
-  togglePlannerVariable,
-  validatePromptTemplate,
+  updatePlannerContext,
 } from './plannerContext'
 import type { WorkflowDocument } from '../types/workflow'
+import type { CatalogComponentBase } from '../types/catalog'
 
-const catalogTools = [
+const catalogTools: CatalogComponentBase[] = [
   {
     id: 'olo-core:web-search',
     kind: 'TOOL',
     name: 'Web Search',
-    description: 'Search public information',
-  },
-  {
-    id: 'olo-core:http-tool',
-    kind: 'TOOL',
-    name: 'HTTP',
-    description: 'Call external APIs',
-  },
-  {
-    id: 'olo-core:calculator',
-    kind: 'TOOL',
-    name: 'Calculator',
-    description: 'Basic arithmetic',
+    description: 'Search the web',
   },
 ]
 
-const baseDoc: WorkflowDocument = {
-  id: 'agent',
-  variables: [],
-  tools: [],
-  availableAgents: [],
-  capability: { required_context: [] },
-  metadata: {},
-}
-
 const emptyContextDoc: WorkflowDocument = {
-  ...baseDoc,
-  variables: [
-    { name: 'message', type: 'string', scope: 'EXTERNAL', required: true },
-    { name: 'ReturnValue', type: 'string', scope: 'LOCAL' },
-  ],
-  prompts: [
-    {
-      id: DEFAULT_PROMPT_ID,
-      name: 'Default planner prompt',
-      promptTemplate: 'Investigate {message}',
-    },
-  ],
-  defaultPromptId: DEFAULT_PROMPT_ID,
+  id: 'agent',
+  nodes: [],
   metadata: {
     plannerContext: {
-      selectedTools: [],
-      selectedAgents: [],
+      selectedVariables: ['message'],
       injectCapabilities: true,
       injectAgents: true,
+      selectedAgents: [],
+      selectedTools: [],
     },
   },
 }
 
 describe('plannerContext', () => {
-  it('reads prompts without embedded parameters', () => {
+  it('reads planner exposure settings from metadata', () => {
     const doc: WorkflowDocument = {
-      ...baseDoc,
-      prompts: [
-        {
-          id: 'research',
-          name: 'Research prompt',
-          promptTemplate: 'Investigate {message}',
-        },
-      ],
-      defaultPromptId: 'research',
-      variables: [{ name: 'message', type: 'string', required: true }],
+      ...emptyContextDoc,
       metadata: {
         plannerContext: {
-          selectedTools: ['olo-core:http-tool'],
+          selectedVariables: ['message'],
+          selectedTools: ['olo-core:web-search'],
           selectedAgents: ['planner'],
-          injectCapabilities: true,
+          injectCapabilities: false,
           injectAgents: false,
         },
       },
     }
-    expect(readPlannerContext(doc).prompts[0]).toEqual({
-      id: 'research',
-      name: 'Research prompt',
-      promptTemplate: 'Investigate {message}',
-    })
-  })
 
-  it('derives prompt parameters from workflow variables', () => {
-    expect(plannerParametersFromVariables(emptyContextDoc)).toEqual([
-      { name: 'message', type: 'string', required: true },
-      { name: 'ReturnValue', type: 'string', required: false },
-    ])
-  })
-
-  it('validates placeholders against workflow variables', () => {
-    const issues = validatePromptTemplate('Investigate {message} for {customerId}', emptyContextDoc)
-    expect(issues.some((issue) => issue.code === 'dangling-placeholder')).toBe(true)
-
-    const missing = validatePromptTemplate('Do work', emptyContextDoc)
-    expect(missing.some((issue) => issue.code === 'missing-in-prompt')).toBe(true)
-
-    const ok = validatePromptTemplate('Investigate {message}', emptyContextDoc)
-    expect(ok).toHaveLength(0)
-  })
-
-  it('expands capability and agent macros in generated prompt', () => {
-    const prompt = {
-      id: 'p1',
-      name: 'Prompt',
-      promptTemplate: `Task:\nInvestigate {message}\n\n{${PLANNER_MACRO_CAPABILITIES}}\n\n{AGENTS}`,
-    }
-    const context = {
-      selectedTools: ['olo-core:http-tool'],
-      selectedAgents: ['planner'],
-      injectCapabilities: true,
-    }
-    const text = generatePlannerPrompt(prompt, context, catalogTools, [
-      { id: 'planner', label: 'Research Agent', description: 'Researches topics' },
-    ])
-    expect(text).toContain('HTTP')
-    expect(text).toContain('Research Agent')
-    expect(extractPromptPlaceholders(prompt.promptTemplate)).toContain('message')
-  })
-
-  it('expands {agents} from selection without injectAgents flag', () => {
-    const prompt = {
-      id: 'p1',
-      name: 'Prompt',
-      promptTemplate: 'Delegate:\n{agents}',
-    }
-    const text = generatePlannerPrompt(
-      prompt,
-      {
-        selectedTools: [],
-        selectedAgents: ['planner'],
-        injectCapabilities: false,
-      },
-      catalogTools,
-      [{ id: 'planner', label: 'Planner', description: 'Plans work' }],
-    )
-    expect(text).toContain('Planner')
-    expect(text).toContain('Plans work')
-  })
-
-  it('adds and removes planner prompts', () => {
-    let doc = addPlannerPrompt(emptyContextDoc, catalogTools)
-    expect(readPlannerContext(doc).prompts).toHaveLength(2)
-    const added = readPlannerContext(doc).prompts[1]
-    doc = removePlannerPrompt(doc, added.id, catalogTools)
-    expect(readPlannerContext(doc).prompts).toHaveLength(1)
-  })
-
-  it('does not persist parameters on prompts when saving', () => {
-    const doc = applyPlannerContext(
-      {
-        ...emptyContextDoc,
-        prompts: [
-          {
-            id: DEFAULT_PROMPT_ID,
-            name: 'Default',
-            promptTemplate: DEFAULT_PROMPT_TEMPLATE,
-            parameters: [{ name: 'legacy', type: 'string', required: true }],
-          },
-        ],
-      },
-      readPlannerContext(emptyContextDoc),
-      catalogTools,
-    )
-    expect(doc.prompts?.[0]).toEqual({
-      id: DEFAULT_PROMPT_ID,
-      name: 'Default planner prompt',
-      promptTemplate: 'Investigate {message}',
-    })
-    expect(doc.prompts?.[0]).not.toHaveProperty('parameters')
-  })
-
-  it('enables catalog tools when a capability is selected', () => {
-    const doc = togglePlannerTool(emptyContextDoc, 'olo-core:calculator', true, catalogTools)
-    expect(readPlannerContext(doc).selectedTools).toEqual(['olo-core:calculator'])
-    expect(doc.tools).toHaveLength(1)
-  })
-
-  it('syncs selected workflow variables to required_context', () => {
-    const doc = togglePlannerVariable(emptyContextDoc, 'message', true, catalogTools)
-    expect(readPlannerContext(doc).selectedVariables).toEqual(['message'])
-    expect(doc.capability?.required_context).toEqual(['message'])
-  })
-
-  it('stores and reads agent promptRef on nodes', () => {
-    const doc: WorkflowDocument = {
-      ...emptyContextDoc,
-      nodes: [{ id: 'agent-1', type: 'AGENT', configuration: {} }],
-    }
-    const withRef = applyAgentPromptRef(doc, 'agent-1', DEFAULT_PROMPT_ID)
-    expect(withRef.nodes?.[0].configuration?.promptRef).toBe(DEFAULT_PROMPT_ID)
-    expect(readAgentPromptRef(withRef.nodes![0], withRef)).toBe(DEFAULT_PROMPT_ID)
-  })
-
-  it('applyPlannerContext writes metadata and agents', () => {
-    const doc = applyPlannerContext(
-      baseDoc,
-      {
-        prompts: [
-          {
-            id: DEFAULT_PROMPT_ID,
-            name: 'Default',
-            promptTemplate: DEFAULT_PROMPT_TEMPLATE,
-          },
-        ],
-        defaultPromptId: DEFAULT_PROMPT_ID,
-        selectedVariables: ['message'],
-        selectedTools: ['olo-core:calculator'],
-        selectedAgents: ['reviewer'],
-        injectCapabilities: true,
-        injectAgents: true,
-      },
-      catalogTools,
-    )
-    expect(doc.prompts?.[0]?.id).toBe(DEFAULT_PROMPT_ID)
-    expect(doc.defaultPromptId).toBe(DEFAULT_PROMPT_ID)
-    expect(doc.metadata?.plannerContext).toMatchObject({
+    expect(readPlannerContext(doc)).toMatchObject({
       selectedVariables: ['message'],
-      selectedAgents: ['reviewer'],
-      selectedTools: ['olo-core:calculator'],
+      selectedTools: ['olo-core:web-search'],
+      selectedAgents: ['planner'],
+      injectCapabilities: false,
+      injectAgents: false,
     })
-    expect(doc.availableAgents).toEqual([{ id: 'reviewer' }])
-    expect(doc.tools).toHaveLength(1)
   })
 
-  it('toggles planner agents', () => {
-    const doc = togglePlannerAgent(emptyContextDoc, 'planner', true, catalogTools)
-    expect(readPlannerContext(doc).selectedAgents).toEqual(['planner'])
-    expect(doc.availableAgents).toEqual([{ id: 'planner' }])
+  it('expands planner macros in generated prompt text', () => {
+    const context = {
+      ...readPlannerContext(emptyContextDoc),
+      injectCapabilities: false,
+      injectAgents: false,
+      selectedTools: ['olo-core:web-search'],
+      selectedAgents: ['planner'],
+    }
+    const prompt = `Task:\nInvestigate {message}\n\n{${PLANNER_MACRO_CAPABILITIES}}\n\n{${PLANNER_MACRO_AGENTS}}`
+    const text = generatePlannerPrompt(prompt, context, catalogTools, [
+      { id: 'planner', label: 'Planner', description: 'Plans work' },
+    ])
+
+    expect(text).toContain('Web Search')
+    expect(text).not.toContain(`{${PLANNER_MACRO_CAPABILITIES}}`)
+    expect(text).toContain('Planner')
+    expect(text).not.toContain(`{${PLANNER_MACRO_AGENTS}}`)
+  })
+
+  it('appends tool and agent blocks when inject checkboxes are enabled', () => {
+    const context = {
+      ...readPlannerContext(emptyContextDoc),
+      injectCapabilities: true,
+      injectAgents: true,
+      selectedTools: ['olo-core:web-search'],
+      selectedAgents: ['planner'],
+    }
+    const text = generatePlannerPrompt('You are helpful.', context, catalogTools, [
+      { id: 'planner', label: 'Planner', description: 'Plans work' },
+    ])
+
+    expect(text).toContain('## Available tools')
+    expect(text).toContain('Web Search')
+    expect(text).toContain('## Available agents')
+    expect(text).toContain('Planner')
+  })
+
+  it('appends injected blocks in addition to template macros', () => {
+    const context = {
+      ...readPlannerContext(emptyContextDoc),
+      injectCapabilities: true,
+      injectAgents: false,
+      selectedTools: ['olo-core:web-search'],
+      selectedAgents: [],
+    }
+    const prompt = `Custom tools section:\n{${PLANNER_MACRO_CAPABILITIES}}`
+    const text = generatePlannerPrompt(prompt, context, catalogTools, [])
+
+    expect(text).toContain('Custom tools section:')
+    expect(text).toContain('Web Search')
+    expect(text).toContain('## Available tools')
+    expect((text.match(/Web Search/g) ?? []).length).toBe(2)
+  })
+
+  it('toggles planner tools and agents', () => {
+    let doc = togglePlannerTool(emptyContextDoc, 'olo-core:web-search', true, catalogTools)
+    expect(readPlannerContext(doc).selectedTools).toContain('olo-core:web-search')
+
+    doc = togglePlannerAgent(doc, 'planner', true, catalogTools)
+    expect(readPlannerContext(doc).selectedAgents).toContain('planner')
+  })
+
+  it('persists planner context only in metadata', () => {
+    const doc = updatePlannerContext(
+      emptyContextDoc,
+      { injectCapabilities: false, selectedTools: ['olo-core:web-search'] },
+      catalogTools,
+    )
+
+    expect(doc.metadata?.plannerContext).toMatchObject({
+      injectCapabilities: false,
+      selectedTools: ['olo-core:web-search'],
+    })
+    expect(doc).not.toHaveProperty('prompts')
+    expect(doc).not.toHaveProperty('defaultPromptId')
   })
 })

@@ -497,6 +497,100 @@
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.catalog-flow-node-inner {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 0;
+  position: relative;
+}
+
+.catalog-flow-node-boundary {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-evenly;
+  width: calc(100% + 2 * var(--catalog-flow-node-pad-x));
+  margin-left: calc(-1 * var(--catalog-flow-node-pad-x));
+  margin-right: calc(-1 * var(--catalog-flow-node-pad-x));
+  min-height: 0.85rem;
+  pointer-events: none;
+}
+
+.catalog-flow-node-boundary-top {
+  margin-top: calc(-1 * 0.45rem);
+  padding-bottom: 0.15rem;
+  align-items: flex-start;
+  justify-content: space-evenly;
+}
+
+.catalog-flow-node-boundary-bottom {
+  margin-bottom: calc(-1 * 0.45rem);
+  padding-top: 0.15rem;
+  align-items: flex-end;
+  justify-content: space-evenly;
+}
+
+.catalog-flow-node-child-workflow {
+  min-width: 10.5rem !important;
+  max-width: 13.5rem !important;
+}
+
+.catalog-flow-child-workflow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.catalog-flow-child-workflow-title {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #fafafa;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.catalog-flow-child-message-block {
+  border: 1px solid #27272a;
+  border-radius: 6px;
+  background: #111113;
+  padding: 0.15rem 0;
+}
+
+.catalog-flow-node-ports-compact {
+  margin-left: 0;
+  margin-right: 0;
+  padding: 0.15rem 0 0.1rem;
+  border-top: none;
+}
+
+.catalog-flow-child-open-btn {
+  width: 100%;
+  padding: 0.28rem 0.45rem;
+  border: 1px solid #3f3f46;
+  border-radius: 6px;
+  background: #27272a;
+  color: #e4e4e7;
+  font-size: 0.62rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.catalog-flow-child-open-btn:hover:not(:disabled) {
+  border-color: #52525b;
+  background: #3f3f46;
+  color: #fafafa;
+}
+
+.catalog-flow-child-open-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .catalog-flow-node.selected {
@@ -587,12 +681,69 @@
   position: relative;
   display: flex;
   align-items: center;
+  justify-content: center;
   min-height: 1.1rem;
   pointer-events: auto;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.catalog-flow-node-ports-column .catalog-flow-port-row {
   width: 100%;
+  flex: 0 0 auto;
+}
+
+.catalog-flow-port-row-side-left,
+.catalog-flow-port-row-side-right {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 1.35rem;
+}
+
+.catalog-flow-port-row-side-top,
+.catalog-flow-port-row-side-bottom {
+  min-width: 2.5rem;
+}
+
+.catalog-flow-port-row-side-left {
+  justify-content: flex-start;
+  padding-left: 0.55rem;
+}
+
+.catalog-flow-port-row-side-right {
+  justify-content: flex-end;
+  padding-right: 0.55rem;
+}
+
+.catalog-flow-port-row-side-left .catalog-flow-port-label {
+  text-align: left;
+  margin-left: 0.35rem;
+}
+
+.catalog-flow-port-row-side-right .catalog-flow-port-label {
+  text-align: right;
+  margin-right: 0.35rem;
+}
+
+.catalog-flow-port-row-side-top .catalog-flow-port-label,
+.catalog-flow-port-row-side-bottom .catalog-flow-port-label {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  white-space: nowrap;
+}
+
+.catalog-flow-port-row-side-top .catalog-flow-port-label {
+  top: 0.55rem;
+}
+
+.catalog-flow-port-row-side-bottom .catalog-flow-port-label {
+  bottom: 0.55rem;
 }
 
 .catalog-flow-port-row-input {
+  justify-content: flex-start;
   padding-left: 0.65rem;
   padding-right: 0.2rem;
 }
@@ -601,6 +752,23 @@
   justify-content: flex-end;
   padding-right: 0.65rem;
   padding-left: 0.2rem;
+}
+
+.catalog-flow-port-row-inline-left .react-flow__handle-left,
+.catalog-flow-port-row-inline-right .react-flow__handle-right {
+  position: absolute;
+  top: 50%;
+}
+
+.catalog-flow-port-row-inline-left .react-flow__handle-left {
+  left: 0;
+  transform: translate(-50%, -50%);
+}
+
+.catalog-flow-port-row-inline-right .react-flow__handle-right {
+  right: 0;
+  left: auto;
+  transform: translate(50%, -50%);
 }
 
 .catalog-flow-port-row-input .catalog-flow-port-label {
@@ -766,9 +934,53 @@
   background: #94a3b8;
 }
 
-/* Dots sit on the node border; labels stay inside the row. */
-.catalog-flow-port-row .react-flow__handle {
-  top: 50% !important;
+.catalog-flow-port-row-dimmed .catalog-flow-port-label {
+  color: #71717a;
+  opacity: 0.9;
+}
+
+.catalog-flow-handle-dimmed {
+  background: #71717a !important;
+  border-color: #52525b !important;
+  cursor: default;
+  opacity: 0.85;
+}
+
+/* Handles sit on the node border; labels stay inside the node body. */
+.catalog-flow-port-row-side-left .react-flow__handle-left,
+.catalog-flow-port-row-side-right .react-flow__handle-right {
+  position: absolute;
+  top: var(--port-slot, 50%);
+  transform: translateY(-50%);
+}
+
+.catalog-flow-port-row-side-left .react-flow__handle-left {
+  left: 0;
+  transform: translate(-50%, -50%);
+}
+
+.catalog-flow-port-row-side-right .react-flow__handle-right {
+  right: 0;
+  left: auto;
+  transform: translate(50%, -50%);
+}
+
+.catalog-flow-port-row-side-top .react-flow__handle-top,
+.catalog-flow-port-row-side-bottom .react-flow__handle-bottom {
+  position: absolute;
+  left: var(--port-slot, 50%);
+  transform: translateX(-50%);
+}
+
+.catalog-flow-port-row-side-top .react-flow__handle-top {
+  top: 0;
+  transform: translate(-50%, -50%);
+}
+
+.catalog-flow-port-row-side-bottom .react-flow__handle-bottom {
+  bottom: 0;
+  top: auto;
+  transform: translate(-50%, 50%);
 }
 
 .catalog-flow-port-row .react-flow__handle-left {
