@@ -3,6 +3,8 @@ package com.olo.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.olo.config.OloConfigurationProperties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -15,6 +17,8 @@ import java.util.stream.Stream;
 
 @Service
 public class WorkflowConfigurationService {
+
+    private static final Logger log = LoggerFactory.getLogger(WorkflowConfigurationService.class);
 
     private final OloConfigurationProperties properties;
     private final ObjectMapper mapper = new ObjectMapper();
@@ -42,13 +46,17 @@ public class WorkflowConfigurationService {
                         try {
                             JsonNode document = mapper.readTree(path.toFile());
                             String id = textOrNull(document, "id");
+                            if (id == null || id.isBlank()) {
+                                log.warn("Skipping workflow file without id: {}", path);
+                                return;
+                            }
                             String label = textOrNull(document, "label");
                             String queue = textOrNull(document, "queue");
                             String workflowType = textOrNull(document, "workflowType");
                             String relative = root.relativize(path).toString().replace('\\', '/');
                             summaries.add(new WorkflowSummary(relative, id, label, queue, workflowType));
                         } catch (IOException e) {
-                            throw new IllegalStateException("Failed to read " + path, e);
+                            log.warn("Skipping invalid workflow JSON {}: {}", path, e.getMessage());
                         }
                     });
         }
