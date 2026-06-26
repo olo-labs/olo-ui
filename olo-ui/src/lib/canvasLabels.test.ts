@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { edgeTooltipText, nodeTooltipLines } from './canvasLabels'
+import { buildCatalogFlowEdgeData, edgeTooltipText, nodeTooltipLines } from './canvasLabels'
 import type { CatalogFlowNodeData } from './workflowGraph'
 
 describe('canvasLabels', () => {
@@ -34,5 +34,38 @@ describe('canvasLabels', () => {
         nodes,
       ),
     ).toBe('Start (out) → Agent (in)')
+  })
+
+  it('uses source output port color on edges', () => {
+    const nodes = [
+      {
+        id: 'start',
+        position: { x: 0, y: 0 },
+        data: {
+          label: 'Start',
+          workflowType: 'START',
+          workflowPorts: [
+            {
+              id: 'out',
+              direction: 'OUTPUT',
+              type: 'message',
+              ui: { color: '#ef4444' },
+            },
+          ],
+        },
+      },
+      {
+        id: 'agent',
+        position: { x: 100, y: 0 },
+        data: { label: 'Agent', workflowType: 'AGENT' },
+      },
+    ]
+    expect(
+      buildCatalogFlowEdgeData(
+        { source: 'start', target: 'agent', sourceHandle: 'out', targetHandle: 'in' },
+        nodes,
+        null,
+      ).sourcePortColor,
+    ).toBe('#ef4444')
   })
 })

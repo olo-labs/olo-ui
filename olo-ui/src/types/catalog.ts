@@ -47,6 +47,7 @@ export interface CatalogDefaults {
 
 export interface CatalogMetadata {
   parameterWidgets?: string[]
+  portWireTypes?: string[]
 }
 
 export interface CatalogParameter {
@@ -94,11 +95,19 @@ export interface CatalogComponentBase {
 
 export interface CatalogPort {
   id: string
+  label?: string
   name?: string
   schema?: string
+  type?: string
+  acceptType?: string | string[]
+  direction?: string
+  shortDescription?: string
   required?: boolean
+  minConnections?: number
+  maxConnections?: number | null
   ui?: {
     position?: string
+    color?: string
   }
 }
 

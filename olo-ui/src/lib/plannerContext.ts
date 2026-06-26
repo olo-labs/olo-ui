@@ -12,6 +12,7 @@ import {
   workflowTools,
   workflowVariables,
 } from './workflowResources'
+import { normalizePromptMacroAliases } from './promptTokens'
 
 export const PLANNER_MACRO_CAPABILITIES = 'CAPABILITIES'
 export const PLANNER_MACRO_AGENTS = 'AGENTS'
@@ -260,19 +261,19 @@ export function generatePlannerPrompt(
   prompt: WorkflowPlannerPrompt,
   context: Pick<
     PlannerContextSelection,
-    'selectedTools' | 'selectedAgents' | 'injectCapabilities' | 'injectAgents'
+    'selectedTools' | 'selectedAgents' | 'injectCapabilities'
   >,
   catalogTools: CatalogComponentBase[],
   agents: AgentPromptInfo[],
 ): string {
-  let text = prompt.promptTemplate
+  let text = normalizePromptMacroAliases(prompt.promptTemplate)
 
   if (context.injectCapabilities && text.includes(`{${PLANNER_MACRO_CAPABILITIES}}`)) {
     const block = formatCapabilityLines(context.selectedTools, catalogTools).join('\n\n')
     text = text.replaceAll(`{${PLANNER_MACRO_CAPABILITIES}}`, block || '(none)')
   }
 
-  if (context.injectAgents && text.includes(`{${PLANNER_MACRO_AGENTS}}`)) {
+  if (text.includes(`{${PLANNER_MACRO_AGENTS}}`)) {
     const selected = agents.filter((agent) => context.selectedAgents.includes(agent.id))
     const block = formatAgentLines(selected).join('\n\n')
     text = text.replaceAll(`{${PLANNER_MACRO_AGENTS}}`, block || '(none)')
@@ -389,7 +390,6 @@ function writePlannerContext(
         selectedTools: selection.selectedTools,
         selectedAgents: selection.selectedAgents,
         injectCapabilities: selection.injectCapabilities,
-        injectAgents: selection.injectAgents,
       },
     },
   }
@@ -617,21 +617,13 @@ export function applyAgentPromptRef(
 }
 
 export function plannerContextSummary(
-  doc: WorkflowDocument,
+  _doc: WorkflowDocument,
   selection: PlannerContextSelection,
 ): string {
-  const issueCount = selection.prompts.reduce(
-    (count, prompt) => count + validatePromptTemplate(prompt.promptTemplate, doc).length,
-    0,
-  )
-  const parts = [
-    `Prompts (${selection.prompts.length})`,
-    `Variables (${selection.selectedVariables.length})`,
+  return [
     `Tools (${selection.selectedTools.length})`,
     `Agents (${selection.selectedAgents.length})`,
-  ]
-  if (issueCount > 0) parts.push(`${issueCount} issue(s)`)
-  return parts.join(' · ')
+  ].join(' · ')
 }
 
 export function plannerAutocompleteOptions(

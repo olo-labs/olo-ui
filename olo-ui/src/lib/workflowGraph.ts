@@ -1,15 +1,22 @@
 import type { CatalogComponentBase, CatalogNode, StudioCatalog } from '../types/catalog'
 import type { WorkflowDocument, WorkflowEdge, WorkflowNode, WorkflowPort } from '../types/workflow'
-import { edgeTooltipText } from './canvasLabels'
+import { applyCatalogFlowEdgePresentation } from './canvasLabels'
 import {
-  END_NODE_DESCRIPTOR,
-  START_NODE_DESCRIPTOR,
   createEndNode,
   createStartNode,
   normalizeNodeType,
 } from './boundaryNodes'
 import { findCatalogNode } from './catalogLookup'
+import { resolveNodePresentation } from './nodePresentation'
+import { defaultNodePosition as designerDefaultNodePosition, resolvePortColors } from './workflowDesigner'
+import {
+  cloneWorkflowNodeTemplate,
+  isWorkflowTemplateCatalogId,
+  workflowTypeFromTemplateCatalogId,
+} from './workflowNodeTemplates'
 import type { Node, Edge } from '@xyflow/react'
+import type { NodePresentation } from './nodePresentation'
+import { uniqueNodeId } from './workflowNodeId'
 
 export function resolveNodeDisplayLabel(
   node: Pick<WorkflowNode, 'id' | 'label' | 'type'>,
@@ -46,6 +53,8 @@ export interface CatalogFlowNodeData {
   workflowType: string
   catalogId?: string
   workflowPorts?: WorkflowPort[]
+  presentation?: NodePresentation
+  readOnly?: boolean
   [key: string]: unknown
 }
 
@@ -55,22 +64,7 @@ export function catalogIdToWorkflowType(catalogId: string): string {
   return catalogId
 }
 
-export function slugifyNodeId(name: string): string {
-  const slug = name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-  return slug || 'node'
-}
-
-export function uniqueNodeId(base: string, existing: Iterable<string>): string {
-  const taken = new Set(existing)
-  const slug = slugifyNodeId(base)
-  if (!taken.has(slug)) return slug
-  let n = 2
-  while (taken.has(`${slug}-${n}`)) n += 1
-  return `${slug}-${n}`
-}
+export { slugifyNodeId, uniqueNodeId } from './workflowNodeId'
 
 function readDesignerPosition(node: WorkflowNode): { x: number; y: number } | null {
   const designer = node.configuration?.designer as
@@ -86,10 +80,8 @@ function readDesignerPosition(node: WorkflowNode): { x: number; y: number } | nu
   return null
 }
 
-function defaultNodePosition(index: number): { x: number; y: number } {
-  const col = index % 4
-  const row = Math.floor(index / 4)
-  return { x: 60 + col * 240, y: 60 + row * 150 }
+function defaultNodePosition(workflow: WorkflowDocument, index: number): { x: number; y: number } {
+  return designerDefaultNodePosition(workflow, index)
 }
 
 function catalogPortsToWorkflowPorts(catalogNode: CatalogNode): WorkflowNode['ports'] {
@@ -97,23 +89,33 @@ function catalogPortsToWorkflowPorts(catalogNode: CatalogNode): WorkflowNode['po
   for (const input of catalogNode.inputs ?? []) {
     ports.push({
       id: input.id,
+      label: input.label ?? input.name ?? input.id,
       name: input.name ?? input.id,
+      shortDescription: input.shortDescription,
       schema: input.schema ?? 'any',
+      type: input.type ?? input.schema ?? 'any',
+      acceptType: input.acceptType ?? input.type ?? input.schema ?? 'any',
       direction: 'INPUT',
-      required: input.required ?? false,
-      minConnections: 0,
-      ui: { position: input.ui?.position ?? 'LEFT' },
+      required: input.required,
+      minConnections: input.minConnections,
+      maxConnections: input.maxConnections,
+      ui: { position: input.ui?.position ?? 'LEFT', color: input.ui?.color },
     })
   }
   for (const output of catalogNode.outputs ?? []) {
     ports.push({
       id: output.id,
+      label: output.label ?? output.name ?? output.id,
       name: output.name ?? output.id,
+      shortDescription: output.shortDescription,
       schema: output.schema ?? 'any',
+      type: output.type ?? output.schema ?? 'any',
+      acceptType: output.acceptType,
       direction: 'OUTPUT',
-      required: false,
-      minConnections: 0,
-      ui: { position: output.ui?.position ?? 'RIGHT' },
+      required: output.required,
+      minConnections: output.minConnections,
+      maxConnections: output.maxConnections,
+      ui: { position: output.ui?.position ?? 'RIGHT', color: output.ui?.color },
     })
   }
   return ports
@@ -124,13 +126,20 @@ export function createWorkflowNodeFromCatalog(
   position: { x: number; y: number },
   existingIds: Iterable<string>,
   catalog: StudioCatalog | null,
+  workflow: WorkflowDocument,
 ): WorkflowNode {
-  const workflowType = catalogIdToWorkflowType(catalogItem.id)
-  if (catalogItem.id === START_NODE_DESCRIPTOR.id || workflowType === 'START') {
-    return createStartNode(position, existingIds)
+  if (isWorkflowTemplateCatalogId(catalogItem.id)) {
+    const workflowType = workflowTypeFromTemplateCatalogId(catalogItem.id)
+    return cloneWorkflowNodeTemplate(workflow, workflowType, position, existingIds)
   }
-  if (catalogItem.id === END_NODE_DESCRIPTOR.id || workflowType === 'END') {
-    return createEndNode(position, existingIds)
+
+  const workflowType = catalogIdToWorkflowType(catalogItem.id)
+  const normalized = normalizeNodeType(workflowType)
+  if (normalized === 'START') {
+    return createStartNode(workflow, position, existingIds)
+  }
+  if (normalized === 'END') {
+    return createEndNode(workflow, position, existingIds)
   }
   const id = uniqueNodeId(catalogItem.name ?? workflowType, existingIds)
   const catalogNode =
@@ -167,22 +176,29 @@ function workflowEdgeEndpoints(edge: WorkflowEdge): { source: string; target: st
 export function workflowToFlow(
   workflow: WorkflowDocument,
   catalog: StudioCatalog | null,
+  options?: { readOnly?: boolean },
 ): { nodes: Node<CatalogFlowNodeData>[]; edges: Edge[] } {
+  const readOnly = Boolean(options?.readOnly)
   const workflowNodes = workflow.nodes ?? []
+  const portColors = resolvePortColors(workflow)
   const nodes: Node<CatalogFlowNodeData>[] = workflowNodes.map((node, index) => {
     const workflowType = normalizeNodeType(node.type)
-    const descriptor = findCatalogNode(catalog, workflowType)
-    const position = readDesignerPosition(node) ?? defaultNodePosition(index)
+    const descriptor = findCatalogNode(catalog, workflowType, workflow)
+    const presentation = resolveNodePresentation(workflow, node, catalog)
+    const position = readDesignerPosition(node) ?? defaultNodePosition(workflow, index)
     return {
       id: node.id,
       type: FLOW_NODE_TYPE,
       position,
+      draggable: readOnly ? false : undefined,
       data: {
         label: resolveNodeDisplayLabel(node, catalog),
-        emoji: descriptor?.emoji,
+        emoji: presentation.emoji ?? descriptor?.emoji,
         workflowType,
         catalogId: descriptor?.id,
         workflowPorts: node.ports,
+        presentation,
+        readOnly,
       },
     }
   })
@@ -199,8 +215,7 @@ export function workflowToFlow(
       sourceHandle: endpoints.sourceHandle,
       targetHandle: endpoints.targetHandle,
     }
-    flowEdge.data = { tooltip: edgeTooltipText(flowEdge, nodes) }
-    edges.push(flowEdge)
+    edges.push(applyCatalogFlowEdgePresentation(flowEdge, nodes, catalog, workflow, portColors))
   }
 
   return { nodes, edges }

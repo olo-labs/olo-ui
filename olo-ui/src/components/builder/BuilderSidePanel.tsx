@@ -13,7 +13,7 @@ import {
   toggleCatalogHook,
   workflowHooks,
 } from '../../lib/workflowResources'
-import { END_NODE_DESCRIPTOR, START_NODE_DESCRIPTOR } from '../../lib/boundaryNodes'
+import { workflowPaletteNodes } from '../../lib/workflowNodeTemplates'
 import { plannerContextSummary, readPlannerContext } from '../../lib/plannerContext'
 
 import type { CatalogComponentBase } from '../../types/catalog'
@@ -149,7 +149,7 @@ export function BuilderSidePanel({ expanded, onToggle }: BuilderSidePanelProps) 
 
 
   const nodeGroup = catalogComponentGroups(catalog).find((g) => g.id === 'nodes')
-  const boundaryNodes = [START_NODE_DESCRIPTOR, END_NODE_DESCRIPTOR]
+  const boundaryNodes = workflowPaletteNodes(draft)
 
   const catalogHooks = catalog?.hooks ?? []
 
@@ -392,7 +392,7 @@ export function BuilderSidePanel({ expanded, onToggle }: BuilderSidePanelProps) 
 
                 <p className="builder-section-hint">
 
-                  Planner prompts, workflow variables, capabilities, and delegate agents.
+                  Capabilities and delegate agents for planner context. Prompts are configured on Agent nodes.
 
                 </p>
 

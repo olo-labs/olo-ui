@@ -130,7 +130,6 @@ describe('plannerContext', () => {
       selectedTools: ['olo-core:http-tool'],
       selectedAgents: ['planner'],
       injectCapabilities: true,
-      injectAgents: true,
     }
     const text = generatePlannerPrompt(prompt, context, catalogTools, [
       { id: 'planner', label: 'Research Agent', description: 'Researches topics' },
@@ -138,6 +137,26 @@ describe('plannerContext', () => {
     expect(text).toContain('HTTP')
     expect(text).toContain('Research Agent')
     expect(extractPromptPlaceholders(prompt.promptTemplate)).toContain('message')
+  })
+
+  it('expands {agents} from selection without injectAgents flag', () => {
+    const prompt = {
+      id: 'p1',
+      name: 'Prompt',
+      promptTemplate: 'Delegate:\n{agents}',
+    }
+    const text = generatePlannerPrompt(
+      prompt,
+      {
+        selectedTools: [],
+        selectedAgents: ['planner'],
+        injectCapabilities: false,
+      },
+      catalogTools,
+      [{ id: 'planner', label: 'Planner', description: 'Plans work' }],
+    )
+    expect(text).toContain('Planner')
+    expect(text).toContain('Plans work')
   })
 
   it('adds and removes planner prompts', () => {

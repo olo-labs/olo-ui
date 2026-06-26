@@ -1,8 +1,9 @@
+import { catalogStore } from '../../store/catalogStore'
 import { workflowConfigurationStore } from '../../store/workflowConfigurationStore'
+import { resolveNodeTypeLabel } from '../../lib/nodePresentation'
 import {
   applyEndOutputMapping,
   applyStartInputMappings,
-  boundaryNodeLabel,
   isEndNodeType,
   isStartNodeType,
   readEndOutputMapping,
@@ -42,6 +43,8 @@ export function CanvasNodeProperties({
   dirty,
   onChange,
 }: CanvasNodePropertiesProps) {
+  const catalog = catalogStore((s) => s.catalog)
+  const typeLabel = resolveNodeTypeLabel(workflow, node, catalog)
   const variables = workflowVariables(workflow)
 
   const labelField = (
@@ -57,7 +60,7 @@ export function CanvasNodeProperties({
     const selected = new Set(readStartInputMappings(node))
     return (
       <div className="canvas-node-properties">
-        <div className="side-panel-title">{boundaryNodeLabel(node.type)} node</div>
+        <div className="side-panel-title">{typeLabel} node</div>
         <p className="canvas-node-properties-hint">
           Map workflow variables that receive caller input at the start of the run.
         </p>
@@ -100,7 +103,7 @@ export function CanvasNodeProperties({
     const selected = readEndOutputMapping(node, workflow)
     return (
       <div className="canvas-node-properties">
-        <div className="side-panel-title">{boundaryNodeLabel(node.type)} node</div>
+        <div className="side-panel-title">{typeLabel} node</div>
         <p className="canvas-node-properties-hint">
           Select the workflow variable returned to the caller when the run completes.
         </p>
@@ -259,7 +262,7 @@ export function CanvasNodeProperties({
 
   return (
     <div className="canvas-node-properties">
-      <div className="side-panel-title">{boundaryNodeLabel(node.type)} node</div>
+      <div className="side-panel-title">{typeLabel} node</div>
       {labelField}
       <p className="canvas-node-properties-meta">Node id: {node.id}</p>
       {dirty ? <p className="canvas-node-properties-dirty">Unsaved changes</p> : null}

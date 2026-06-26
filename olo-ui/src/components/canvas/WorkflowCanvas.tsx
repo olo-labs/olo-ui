@@ -9,16 +9,24 @@ import {
   useEdgesState,
   useReactFlow,
   ReactFlowProvider,
+  MarkerType,
   type Connection,
   type Edge,
   type Node,
+  type OnConnectStartParams,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 
 import { catalogStore } from '../../store/catalogStore'
 import { workflowConfigurationStore } from '../../store/workflowConfigurationStore'
 import { readCatalogDrag } from '../../lib/canvasDrag'
-import { edgeTooltipText } from '../../lib/canvasLabels'
+import {
+  applyCatalogFlowEdgePresentation,
+  defaultEdgeStroke,
+  resolveConnectionLineColor,
+} from '../../lib/canvasLabels'
+import { arePortsCompatible } from '../../lib/portConnection'
+import { resolveNodePort } from '../../lib/portResolve'
 import {
   FLOW_EDGE_TYPE,
   FLOW_NODE_TYPE,
@@ -29,14 +37,37 @@ import {
   workflowToFlow,
   type CatalogFlowNodeData,
 } from '../../lib/workflowGraph'
-import { buildQuery, parseQuery, parsedToPanelParams } from '../../routes'
+import {
+  mergeWorkflowCanvasView,
+  readWorkflowCanvasView,
+  roundCanvasViewport,
+  type WorkflowCanvasSize,
+} from '../../lib/workflowCanvasView'
+import { workflowDraftSnapshot } from '../../lib/workflowDraftSnapshot'
 import { CatalogFlowEdge } from './CatalogFlowEdge'
 import { CatalogFlowNode } from './CatalogFlowNode'
 import { CanvasContextMenu, type CanvasContextMenuState } from './CanvasContextMenu'
 import { CanvasToolbar } from './CanvasToolbar'
+import { CanvasViewportController } from './CanvasViewportController'
+import {
+  isWorkflowTemplateCatalogId,
+  workflowPaletteNodes,
+  workflowTypeFromTemplateCatalogId,
+} from '../../lib/workflowNodeTemplates'
+import { resolveNodePresentation } from '../../lib/nodePresentation'
+import { resolveCanvasTheme } from '../../lib/workflowDesigner'
+import { buildQuery, parseQuery, parsedToPanelParams } from '../../routes'
 
 const nodeTypes = { [FLOW_NODE_TYPE]: CatalogFlowNode }
 const edgeTypes = { [FLOW_EDGE_TYPE]: CatalogFlowEdge }
+const defaultFlowEdgeOptions = {
+  type: FLOW_EDGE_TYPE,
+  markerEnd: {
+    type: MarkerType.ArrowClosed,
+    width: 20,
+    height: 20,
+  },
+} as const
 
 export interface WorkflowCanvasProps {
   readOnly?: boolean
@@ -46,21 +77,53 @@ function WorkflowCanvasInner({ readOnly = false }: WorkflowCanvasProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const draft = workflowConfigurationStore((s) => s.draft)
+  const selectedFileName = workflowConfigurationStore((s) => s.selectedFileName)
   const catalog = catalogStore((s) => s.catalog)
   const updateDraft = workflowConfigurationStore((s) => s.updateDraft)
   const setSelectedCanvasNodeId = workflowConfigurationStore((s) => s.setSelectedCanvasNodeId)
   const [contextMenu, setContextMenu] = useState<CanvasContextMenuState | null>(null)
+  const [connectionLineColor, setConnectionLineColor] = useState(() => defaultEdgeStroke(draft))
+  const canvasTheme = useMemo(() => resolveCanvasTheme(draft), [draft])
 
   const initial = useMemo(
-    () => (draft ? workflowToFlow(draft, catalog) : { nodes: [], edges: [] }),
+    () => (draft ? workflowToFlow(draft, catalog, { readOnly }) : { nodes: [], edges: [] }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset only when workflow file changes
-    [draft?.id, workflowConfigurationStore.getState().selectedFileName],
+    [draft?.id, workflowConfigurationStore.getState().selectedFileName, readOnly],
   )
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<CatalogFlowNodeData>>(initial.nodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initial.edges)
-  const { screenToFlowPosition } = useReactFlow()
+  const { screenToFlowPosition, getViewport } = useReactFlow()
   const syncingRef = useRef(false)
+  const canvasHydratingRef = useRef(true)
+  const canvasContainerRef = useRef<HTMLDivElement>(null)
+  const canvasSizeRef = useRef<WorkflowCanvasSize | null>(null)
+  const canvasViewPersistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const graphSyncKey = useMemo(() => {
+    if (!draft) return ''
+    return JSON.stringify({ id: draft.id, nodes: draft.nodes, edges: draft.edges })
+  }, [draft])
+
+  const savedCanvasView = useMemo(
+    () => (draft ? readWorkflowCanvasView(draft) : null),
+    [draft?.id, draft?.metadata],
+  )
+
+  const workflowCanvasKey = `${draft?.id ?? ''}:${selectedFileName ?? ''}`
+
+  useEffect(() => {
+    canvasHydratingRef.current = true
+    canvasSizeRef.current = savedCanvasView?.size ?? null
+  }, [savedCanvasView?.size, workflowCanvasKey])
+
+  const finishCanvasHydration = useCallback(() => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        canvasHydratingRef.current = false
+      })
+    })
+  }, [])
 
   useEffect(() => {
     if (!draft) {
@@ -69,13 +132,57 @@ function WorkflowCanvasInner({ readOnly = false }: WorkflowCanvasProps) {
       return
     }
     syncingRef.current = true
-    const next = workflowToFlow(draft, catalog)
+    const next = workflowToFlow(draft, catalog, { readOnly })
     setNodes(next.nodes)
     setEdges(next.edges)
     queueMicrotask(() => {
       syncingRef.current = false
     })
-  }, [draft, catalog, setNodes, setEdges])
+  }, [catalog, graphSyncKey, readOnly, setEdges, setNodes])
+
+  const persistCanvasView = useCallback(() => {
+    if (!draft || readOnly || syncingRef.current || canvasHydratingRef.current) return
+    const viewport = roundCanvasViewport(getViewport())
+    const size = canvasSizeRef.current
+    const merged = mergeWorkflowCanvasView(draft, {
+      viewport,
+      ...(size ? { size } : {}),
+    })
+    if (workflowConfigurationStore.getState().savedSnapshot === workflowDraftSnapshot(merged)) {
+      return
+    }
+    updateDraft(merged)
+  }, [draft, getViewport, readOnly, updateDraft])
+
+  const schedulePersistCanvasView = useCallback(() => {
+    if (canvasViewPersistTimerRef.current) clearTimeout(canvasViewPersistTimerRef.current)
+    canvasViewPersistTimerRef.current = setTimeout(() => {
+      persistCanvasView()
+    }, 250)
+  }, [persistCanvasView])
+
+  useEffect(() => {
+    const element = canvasContainerRef.current
+    if (!element || readOnly) return undefined
+
+    const updateSize = () => {
+      const width = Math.round(element.clientWidth)
+      const height = Math.round(element.clientHeight)
+      if (width <= 0 || height <= 0) return
+      const previous = canvasSizeRef.current
+      if (previous?.width === width && previous?.height === height) return
+      canvasSizeRef.current = { width, height }
+      schedulePersistCanvasView()
+    }
+
+    updateSize()
+    const observer = new ResizeObserver(updateSize)
+    observer.observe(element)
+    return () => {
+      observer.disconnect()
+      if (canvasViewPersistTimerRef.current) clearTimeout(canvasViewPersistTimerRef.current)
+    }
+  }, [readOnly, schedulePersistCanvasView, workflowCanvasKey])
 
   const persistGraph = useCallback(
     (nextNodes: Node<CatalogFlowNodeData>[], nextEdges: Edge[]) => {
@@ -97,21 +204,56 @@ function WorkflowCanvasInner({ readOnly = false }: WorkflowCanvasProps) {
             && e.targetHandle === connection.targetHandle,
         )
         if (exists) return eds
-        const newEdge: Edge = {
-          id: `edge-${connection.source}-${connection.sourceHandle ?? 'out'}-${connection.target}-${connection.targetHandle ?? 'in'}`,
-          type: FLOW_EDGE_TYPE,
-          source: connection.source,
-          target: connection.target,
-          sourceHandle: connection.sourceHandle,
-          targetHandle: connection.targetHandle,
-        }
-        newEdge.data = { tooltip: edgeTooltipText(newEdge, nodes) }
+        const newEdge = applyCatalogFlowEdgePresentation(
+          {
+            id: `edge-${connection.source}-${connection.sourceHandle ?? 'out'}-${connection.target}-${connection.targetHandle ?? 'in'}`,
+            type: FLOW_EDGE_TYPE,
+            source: connection.source,
+            target: connection.target,
+            sourceHandle: connection.sourceHandle,
+            targetHandle: connection.targetHandle,
+          },
+          nodes,
+          catalog,
+          draft,
+        )
         const next = [...eds, newEdge]
         persistGraph(nodes, next)
         return next
       })
     },
-    [nodes, persistGraph, readOnly, setEdges],
+    [catalog, draft, nodes, persistGraph, readOnly, setEdges],
+  )
+
+  const onConnectStart = useCallback(
+    (_event: MouseEvent | TouchEvent, params: OnConnectStartParams) => {
+      if (readOnly || params.handleType !== 'source') {
+        setConnectionLineColor(defaultEdgeStroke(draft))
+        return
+      }
+      setConnectionLineColor(
+        resolveConnectionLineColor(params.nodeId, params.handleId, nodes, catalog, draft),
+      )
+    },
+    [catalog, draft, nodes, readOnly],
+  )
+
+  const onConnectEnd = useCallback(() => {
+    setConnectionLineColor(defaultEdgeStroke(draft))
+  }, [draft])
+
+  const isValidConnection = useCallback(
+    (connection: Connection | Edge) => {
+      if (readOnly || !connection.source || !connection.target) return false
+      const sourceNode = nodes.find((node) => node.id === connection.source)
+      const targetNode = nodes.find((node) => node.id === connection.target)
+      if (!sourceNode || !targetNode) return false
+      const outputPort = resolveNodePort(sourceNode, connection.sourceHandle, 'OUTPUT', catalog, draft)
+      const inputPort = resolveNodePort(targetNode, connection.targetHandle, 'INPUT', catalog, draft)
+      if (!outputPort || !inputPort) return true
+      return arePortsCompatible(outputPort, inputPort)
+    },
+    [catalog, draft, nodes, readOnly],
   )
 
   const onNodesDelete = useCallback(
@@ -147,6 +289,10 @@ function WorkflowCanvasInner({ readOnly = false }: WorkflowCanvasProps) {
   const onNodeDragStop = useCallback(() => {
     persistGraph(nodes, edges)
   }, [edges, nodes, persistGraph])
+
+  const onCanvasMoveEnd = useCallback(() => {
+    schedulePersistCanvasView()
+  }, [schedulePersistCanvasView])
 
   const onSelectionChange = useCallback(
     ({ nodes: selected }: { nodes: Node<CatalogFlowNodeData>[] }) => {
@@ -221,7 +367,10 @@ function WorkflowCanvasInner({ readOnly = false }: WorkflowCanvasProps) {
 
       const position = screenToFlowPosition({ x: event.clientX, y: event.clientY })
       const existingIds = (draft.nodes ?? []).map((n) => n.id)
-      const catalogItem = catalog?.nodes?.find((n) => n.id === payload.catalogId)
+      const paletteNodes = workflowPaletteNodes(draft)
+      const catalogItem =
+        catalog?.nodes?.find((n) => n.id === payload.catalogId)
+        ?? paletteNodes.find((n) => n.id === payload.catalogId)
       if (!catalogItem) return
 
       const workflowNode = createWorkflowNodeFromCatalog(
@@ -229,8 +378,12 @@ function WorkflowCanvasInner({ readOnly = false }: WorkflowCanvasProps) {
         position,
         existingIds,
         catalog,
+        draft,
       )
-      const workflowType = catalogIdToWorkflowType(catalogItem.id)
+      const workflowType = isWorkflowTemplateCatalogId(catalogItem.id)
+        ? workflowTypeFromTemplateCatalogId(catalogItem.id)
+        : catalogIdToWorkflowType(catalogItem.id)
+      const presentation = resolveNodePresentation(draft, workflowNode, catalog)
 
       const flowNode: Node<CatalogFlowNodeData> = {
         id: workflowNode.id,
@@ -238,9 +391,12 @@ function WorkflowCanvasInner({ readOnly = false }: WorkflowCanvasProps) {
         position,
         data: {
           label: resolveNodeDisplayLabel(workflowNode, catalog),
-          emoji: catalogItem.emoji ?? payload.emoji,
+          emoji: presentation.emoji ?? catalogItem.emoji ?? payload.emoji,
           workflowType,
           catalogId: catalogItem.id,
+          workflowPorts: workflowNode.ports,
+          presentation,
+          readOnly,
         },
       }
 
@@ -269,14 +425,22 @@ function WorkflowCanvasInner({ readOnly = false }: WorkflowCanvasProps) {
   }
 
   return (
-    <div className="workflow-canvas">
+    <div className="workflow-canvas" ref={canvasContainerRef}>
       <CanvasToolbar readOnly={readOnly} />
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        defaultViewport={savedCanvasView?.viewport}
         onNodesChange={readOnly ? undefined : onNodesChange}
         onEdgesChange={readOnly ? undefined : onEdgesChange}
         onConnect={onConnect}
+        onConnectStart={readOnly ? undefined : onConnectStart}
+        onConnectEnd={readOnly ? undefined : onConnectEnd}
+        onMoveEnd={readOnly ? undefined : onCanvasMoveEnd}
+        connectionLineStyle={{ stroke: connectionLineColor, strokeWidth: 1.5 }}
+        defaultEdgeOptions={defaultFlowEdgeOptions}
+        defaultMarkerColor={connectionLineColor}
+        isValidConnection={readOnly ? undefined : isValidConnection}
         onNodesDelete={onNodesDelete}
         onEdgesDelete={onEdgesDelete}
         onNodeDragStop={onNodeDragStop}
@@ -288,14 +452,19 @@ function WorkflowCanvasInner({ readOnly = false }: WorkflowCanvasProps) {
         onDrop={onDrop}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
-        fitView
         deleteKeyCode={readOnly ? null : ['Backspace', 'Delete']}
         proOptions={{ hideAttribution: true }}
       >
-        <Background gap={16} size={1} color="#3f3f46" />
+        <CanvasViewportController
+          workflowKey={workflowCanvasKey}
+          savedView={savedCanvasView}
+          nodeCount={nodes.length}
+          onViewApplied={readOnly ? undefined : finishCanvasHydration}
+        />
+        <Background gap={canvasTheme.gridGap} size={1} color={canvasTheme.backgroundColor} />
         <Controls showInteractive={!readOnly} />
         <MiniMap
-          nodeColor="#52525b"
+          nodeColor={canvasTheme.minimapNodeColor}
           maskColor="rgba(9, 9, 11, 0.75)"
           className="workflow-canvas-minimap"
         />

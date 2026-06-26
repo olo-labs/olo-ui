@@ -8,6 +8,12 @@ import {
   workflowFileName,
 } from '../lib/workflowConfiguration'
 import { normalizeWorkflowDocumentEmoji } from '../lib/workflowEmoji'
+import { getLastWorkflowFileName, setLastWorkflowFileName } from '../lib/lastWorkflow'
+import {
+  isWorkflowDraftDirty,
+  normalizeWorkflowDraft,
+  workflowDraftSnapshot,
+} from '../lib/workflowDraftSnapshot'
 import type { WorkflowDocument, WorkflowSummary } from '../types/workflow'
 
 export interface WorkflowConfigurationState {
@@ -18,6 +24,7 @@ export interface WorkflowConfigurationState {
   selectedFileName: string | null
   draft: WorkflowDocument | null
   dirty: boolean
+  savedSnapshot: string | null
   selectedCanvasNodeId: string | null
 
   loadWorkflows: () => Promise<void>
@@ -44,6 +51,7 @@ export const workflowConfigurationStore = create<WorkflowConfigurationState>((se
   selectedFileName: null,
   draft: null,
   dirty: false,
+  savedSnapshot: null,
   selectedCanvasNodeId: null,
 
   loadWorkflows: async () => {
@@ -54,6 +62,13 @@ export const workflowConfigurationStore = create<WorkflowConfigurationState>((se
         api.getConfigurationRoot(),
       ])
       set({ workflows, configurationRoot, loading: false })
+      const { selectedFileName } = get()
+      if (!selectedFileName) {
+        const lastFileName = getLastWorkflowFileName()
+        if (lastFileName && workflows.some((workflow) => workflow.fileName === lastFileName)) {
+          await get().selectWorkflow(lastFileName)
+        }
+      }
     } catch (e) {
       set({
         workflows: [],
@@ -74,15 +89,16 @@ export const workflowConfigurationStore = create<WorkflowConfigurationState>((se
   selectWorkflow: async (fileName) => {
     set({ loading: true, error: null })
     try {
-      const document = ensureWorkflowModelInfrastructure(
-        normalizeWorkflowBoundaries(await api.getWorkflowConfiguration(fileName)),
-      )
+      const document = normalizeWorkflowDraft(await api.getWorkflowConfiguration(fileName))
+      const savedSnapshot = workflowDraftSnapshot(document)
       set({
         selectedFileName: fileName,
         draft: document,
         dirty: false,
+        savedSnapshot,
         loading: false,
       })
+      setLastWorkflowFileName(fileName)
     } catch (e) {
       set({
         loading: false,
@@ -112,7 +128,13 @@ export const workflowConfigurationStore = create<WorkflowConfigurationState>((se
     }
   },
 
-  updateDraft: (document) => set({ draft: document, dirty: true }),
+  updateDraft: (document) => {
+    const { savedSnapshot } = get()
+    set({
+      draft: document,
+      dirty: isWorkflowDraftDirty(document, savedSnapshot),
+    })
+  },
 
   setSelectedCanvasNodeId: (nodeId) => set({ selectedCanvasNodeId: nodeId }),
 
@@ -121,13 +143,10 @@ export const workflowConfigurationStore = create<WorkflowConfigurationState>((se
     if (!draft || !selectedFileName) return
     set({ loading: true, error: null })
     try {
-      await api.saveWorkflowConfiguration(
-        selectedFileName,
-        normalizeWorkflowDocumentEmoji(
-          ensureWorkflowModelInfrastructure(normalizeWorkflowBoundaries(draft)),
-        ),
-      )
-      set({ dirty: false, loading: false })
+      const normalized = normalizeWorkflowDraft(draft)
+      const savedSnapshot = workflowDraftSnapshot(normalized)
+      await api.saveWorkflowConfiguration(selectedFileName, normalized)
+      set({ draft: normalized, dirty: false, savedSnapshot, loading: false })
       await get().loadWorkflows()
     } catch (e) {
       set({
@@ -152,7 +171,10 @@ export const workflowConfigurationStore = create<WorkflowConfigurationState>((se
       await api.deleteWorkflowConfiguration(fileName)
       const { selectedFileName } = get()
       if (selectedFileName === fileName) {
-        set({ selectedFileName: null, draft: null, dirty: false })
+        set({ selectedFileName: null, draft: null, dirty: false, savedSnapshot: null })
+        setLastWorkflowFileName('')
+      } else if (getLastWorkflowFileName() === fileName) {
+        setLastWorkflowFileName('')
       }
       set({ loading: false })
       await get().loadWorkflows()
@@ -221,5 +243,5 @@ export const workflowConfigurationStore = create<WorkflowConfigurationState>((se
   },
 
   clearSelection: () =>
-    set({ selectedFileName: null, draft: null, dirty: false, selectedCanvasNodeId: null }),
+    set({ selectedFileName: null, draft: null, dirty: false, savedSnapshot: null, selectedCanvasNodeId: null }),
 }))

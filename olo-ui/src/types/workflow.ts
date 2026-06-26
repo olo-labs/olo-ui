@@ -2,6 +2,123 @@
 
 
 
+export interface NodeSize {
+
+  width?: number
+
+  height?: number
+
+}
+
+export type InlinePropertyWidget =
+  | 'VARIABLE_CHECKLIST'
+  | 'VARIABLE_SELECT'
+  | 'WORKFLOW_PARAMETERS'
+  | 'MODEL_SELECTOR'
+  | 'PROVIDER_SELECTOR'
+
+export interface InlinePropertyConfig {
+
+  id: string
+
+  widget: InlinePropertyWidget
+
+  label?: string
+
+  binding?: string
+
+}
+
+export interface NodeTypeDesignerConfig {
+
+  emoji?: string
+
+  typeLabel?: string
+
+  description?: string
+
+  palette?: {
+
+    name?: string
+
+    category?: string
+
+    enabled?: boolean
+
+  }
+
+  inlineProperties?: InlinePropertyConfig[]
+
+}
+
+export interface WorkflowLayoutDesigner {
+
+  originX?: number
+
+  originY?: number
+
+  columnGap?: number
+
+  rowGap?: number
+
+  columns?: number
+
+}
+
+export interface WorkflowCanvasDesigner {
+
+  backgroundColor?: string
+
+  gridGap?: number
+
+  edgeStroke?: string
+
+  selectionBorder?: string
+
+  minimapNodeColor?: string
+
+}
+
+export interface WorkflowDesigner {
+
+  paletteGroup?: string
+
+  searchKeywords?: string[]
+
+  nodeSize?: NodeSize
+
+  resizable?: boolean
+
+  draggable?: boolean
+
+  layout?: WorkflowLayoutDesigner
+
+  canvas?: WorkflowCanvasDesigner
+
+  portColors?: Record<string, string>
+
+  nodeTypes?: Record<string, NodeTypeDesignerConfig>
+
+}
+
+export interface NodeDesignerConfig {
+
+  position?: { x?: number; y?: number }
+
+  x?: number
+
+  y?: number
+
+  emoji?: string
+
+  typeLabel?: string
+
+  description?: string
+
+  inlineProperties?: InlinePropertyConfig[]
+
+}
+
 export interface WorkflowDocument {
 
   id: string
@@ -15,6 +132,8 @@ export interface WorkflowDocument {
   shortDescription?: string
 
   emoji?: string
+
+  designer?: WorkflowDesigner
 
   queue?: string
 
@@ -290,19 +409,31 @@ export interface WorkflowPort {
 
   id: string
 
+  label?: string
+
   name?: string
 
   schema?: string
 
+  type?: string
+
+  acceptType?: string | string[]
+
   direction?: string
+
+  shortDescription?: string
 
   required?: boolean
 
   minConnections?: number
 
+  maxConnections?: number | null
+
   ui?: {
 
     position?: string
+
+    color?: string
 
   }
 

@@ -480,30 +480,40 @@
 
 .catalog-flow-node {
   position: relative;
-  min-width: 160px;
-  max-width: 220px;
-  padding: 0.5rem 0.65rem 1.25rem;
+  min-width: var(--catalog-node-min-width, 240px);
+  max-width: var(--catalog-node-max-width, 300px);
+  min-height: var(--catalog-node-min-height, auto);
+  --catalog-flow-node-pad-x: 0.55rem;
+  padding: 0.45rem var(--catalog-flow-node-pad-x);
   background: #18181b;
   border: 1px solid #3f3f46;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
+  overflow: visible;
+}
+
+.catalog-flow-node-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
 }
 
 .catalog-flow-node.selected {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 1px #3b82f6;
+  border-color: var(--catalog-node-selection-border, #3b82f6);
+  box-shadow: 0 0 0 1px var(--catalog-node-selection-border, #3b82f6);
 }
 
 .catalog-flow-node-header {
   display: flex;
   align-items: flex-start;
-  gap: 0.4rem;
+  gap: 0.35rem;
 }
 
 .catalog-flow-node-emoji {
-  font-size: 1.1rem;
+  font-size: 1rem;
   line-height: 1;
+  flex-shrink: 0;
 }
 
 .catalog-flow-node-titles {
@@ -511,6 +521,7 @@
   flex-direction: column;
   gap: 0.1rem;
   min-width: 0;
+  flex: 1;
 }
 
 .catalog-flow-node-label {
@@ -521,35 +532,278 @@
   white-space: nowrap;
 }
 
+.catalog-flow-node-label-input {
+  width: 100%;
+  min-width: 0;
+  padding: 0.15rem 0.3rem;
+  border: 1px solid #3f3f46;
+  border-radius: 4px;
+  background: #09090b;
+  color: #fafafa;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.catalog-flow-node-label-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
 .catalog-flow-node-type {
-  font-size: 0.65rem;
+  font-size: 0.6rem;
   color: #71717a;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
-.catalog-flow-node-id {
-  position: absolute;
-  bottom: 0.25rem;
-  left: 0.5rem;
+.catalog-flow-node-ports {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.35rem;
+  margin-left: calc(-1 * var(--catalog-flow-node-pad-x));
+  margin-right: calc(-1 * var(--catalog-flow-node-pad-x));
+  padding: 0.35rem 0 0.1rem;
+  border-top: 1px solid #27272a;
+}
+
+.catalog-flow-node-ports-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.catalog-flow-node-ports-column-input {
+  align-items: stretch;
+}
+
+.catalog-flow-node-ports-column-output {
+  align-items: stretch;
+}
+
+.catalog-flow-port-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 1.1rem;
+  pointer-events: auto;
+  width: 100%;
+}
+
+.catalog-flow-port-row-input {
+  padding-left: 0.65rem;
+  padding-right: 0.2rem;
+}
+
+.catalog-flow-port-row-output {
+  justify-content: flex-end;
+  padding-right: 0.65rem;
+  padding-left: 0.2rem;
+}
+
+.catalog-flow-port-row-input .catalog-flow-port-label {
+  text-align: left;
+}
+
+.catalog-flow-port-row-output .catalog-flow-port-label {
+  text-align: right;
+}
+
+.catalog-flow-port-label {
+  font-size: 0.35rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.catalog-flow-node-properties {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid #27272a;
+}
+
+.catalog-flow-node-property-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.catalog-flow-node-property-title {
   font-size: 0.6rem;
+  font-weight: 600;
+  color: #71717a;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.catalog-flow-node-property-empty {
+  margin: 0;
+  font-size: 0.65rem;
   color: #52525b;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.catalog-flow-node-check-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.catalog-flow-node-check-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.68rem;
+  color: #d4d4d8;
+}
+
+.catalog-flow-param-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.68rem;
+}
+
+.catalog-flow-param-label {
+  color: #a1a1aa;
+  font-size: 0.62rem;
+}
+
+.catalog-flow-param-input,
+.catalog-flow-param-textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 0.2rem 0.35rem;
+  border: 1px solid #3f3f46;
+  border-radius: 4px;
+  background: #09090b;
+  color: #e4e4e7;
+  font-size: 0.68rem;
+}
+
+.catalog-flow-param-textarea {
+  resize: vertical;
+  min-height: 2.25rem;
+}
+
+.catalog-flow-param-input:focus,
+.catalog-flow-param-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.catalog-flow-port-tooltip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 0.35rem);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 7rem;
+  max-width: 12rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #3f3f46;
+  border-radius: 6px;
+  background: rgba(9, 9, 11, 0.96);
+  color: #e4e4e7;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  white-space: normal;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 8;
+  transition: opacity 0.12s ease;
+}
+
+.catalog-flow-port-tooltip-title {
+  font-weight: 600;
+  color: #fafafa;
+}
+
+.catalog-flow-port-row:hover .catalog-flow-port-tooltip {
+  opacity: 1;
+}
+
+.catalog-flow-node:has(.catalog-flow-port-row:hover) .catalog-flow-node-tooltip {
+  opacity: 0;
 }
 
 .catalog-flow-handle {
-  width: 8px;
-  height: 8px;
-  background: #3b82f6;
-  border: 2px solid #18181b;
+  width: 5px;
+  height: 5px;
+  min-width: 5px;
+  min-height: 5px;
+  border: 1px solid #18181b;
+  border-radius: 50%;
+  z-index: 4;
+  cursor: crosshair;
+}
+
+.catalog-flow-handle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  transform: translate(-50%, -50%);
 }
 
 .catalog-flow-handle-input {
-  background: #22c55e;
+  background: #94a3b8;
 }
 
 .catalog-flow-handle-output {
-  background: #3b82f6;
+  background: #94a3b8;
+}
+
+/* Dots sit on the node border; labels stay inside the row. */
+.catalog-flow-port-row .react-flow__handle {
+  top: 50% !important;
+}
+
+.catalog-flow-port-row .react-flow__handle-left {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.catalog-flow-port-row .react-flow__handle-right {
+  position: absolute;
+  right: 0;
+  left: auto;
+  top: 50%;
+  transform: translate(50%, -50%);
+}
+
+.catalog-flow-node .react-flow__handle-left {
+  left: 0;
+  transform: translate(-50%, -50%);
+}
+
+.catalog-flow-node .react-flow__handle-right {
+  right: 0;
+  transform: translate(50%, -50%);
+}
+
+.catalog-flow-node .react-flow__handle-top {
+  top: 0;
+  transform: translate(-50%, -50%);
+}
+
+.catalog-flow-node .react-flow__handle-bottom {
+  bottom: 0;
+  transform: translate(-50%, 50%);
 }
 
 .components-panel-item.draggable {
@@ -630,6 +884,10 @@
 .catalog-flow-node:hover .catalog-flow-node-tooltip,
 .catalog-flow-node:focus-within .catalog-flow-node-tooltip {
   opacity: 1;
+}
+
+.catalog-flow-node:has(.catalog-flow-port-row:hover) .catalog-flow-node-tooltip {
+  opacity: 0;
 }
 
 .catalog-flow-node-tooltip span:first-child {
