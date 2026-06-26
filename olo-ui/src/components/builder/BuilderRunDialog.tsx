@@ -75,6 +75,7 @@ export function BuilderRunDialog({
   const catalogError = catalogStore((s) => s.error)
   const workflows = workflowConfigurationStore((s) => s.workflows)
   const workflowsLoading = workflowConfigurationStore((s) => s.loading)
+  const workflowsError = workflowConfigurationStore((s) => s.error)
 
   const [selectedQueue, setSelectedQueue] = useState('')
   const [selectedWorkflowId, setSelectedWorkflowId] = useState('')
@@ -88,6 +89,7 @@ export function BuilderRunDialog({
   const pollRef = useRef<number | null>(null)
   const eventsRef = useRef<RunEventDto[]>([])
   const sessionIdRef = useRef('')
+  const selectionInitializedRef = useRef(false)
 
   const queueDefinition = useMemo(
     () => findCatalogQueue(catalog, selectedQueue),
@@ -132,6 +134,7 @@ export function BuilderRunDialog({
     if (!open) {
       stopRun()
       setRunning(false)
+      selectionInitializedRef.current = false
       setSelectedQueue('')
       setSelectedWorkflowId('')
       setPrompt('')
@@ -143,13 +146,18 @@ export function BuilderRunDialog({
       return
     }
 
-    if (!catalog) {
-      void catalogStore.getState().loadCatalog()
+    void catalogStore.getState().loadCatalog()
+    void workflowConfigurationStore.getState().loadWorkflows()
+    return () => stopRun()
+  }, [open, stopRun])
+
+  useEffect(() => {
+    if (!open || catalogLoading || workflowsLoading || !catalog) {
+      return
     }
-    if (workflows.length === 0 && !workflowsLoading) {
-      void workflowConfigurationStore.getState().loadWorkflows()
-    }
-    if (!catalog || workflowsLoading) {
+
+    const queues = catalogQueues(catalog)
+    if (queues.length === 0) {
       return
     }
 
@@ -162,17 +170,34 @@ export function BuilderRunDialog({
     if (initial) {
       setSelectedQueue(initial.queueName)
       setSelectedWorkflowId(initial.workflowId)
+    } else if (!selectedQueue) {
+      const queueName = queues[0].name
+      setSelectedQueue(queueName)
+      const firstForQueue = workflowsForQueue(workflows, queueName)[0] ?? workflows[0]
+      if (firstForQueue?.id) {
+        setSelectedWorkflowId(firstForQueue.id)
+      }
+    } else if (!selectedWorkflowId && workflows.length > 0) {
+      const firstForQueue = workflowsForQueue(workflows, selectedQueue)[0] ?? workflows[0]
+      if (firstForQueue?.id) {
+        setSelectedWorkflowId(firstForQueue.id)
+      }
     }
-    setPrompt(DEFAULT_BUILDER_RUN_PROMPT)
-    return () => stopRun()
+
+    if (!selectionInitializedRef.current) {
+      setPrompt((current) => current || DEFAULT_BUILDER_RUN_PROMPT)
+      selectionInitializedRef.current = true
+    }
   }, [
     open,
-    stopRun,
     catalog,
-    workflows,
+    catalogLoading,
     workflowsLoading,
+    workflows,
     initialTaskQueue,
     initialWorkflowId,
+    selectedQueue,
+    selectedWorkflowId,
   ])
 
   const handleQueueChange = (queueName: string) => {
@@ -288,8 +313,12 @@ export function BuilderRunDialog({
 
         {catalogError ? (
           <p className="builder-run-error">{catalogError}</p>
+        ) : workflowsError ? (
+          <p className="builder-run-error">{workflowsError}</p>
         ) : catalogLoading && !catalog ? (
           <p className="builder-run-meta">Loading queues and workflow types…</p>
+        ) : workflowsLoading ? (
+          <p className="builder-run-meta">Loading workflow presets…</p>
         ) : catalog ? (
           <div className="builder-run-target">
             <label className="builder-run-field">
@@ -298,13 +327,20 @@ export function BuilderRunDialog({
                 className="builder-run-select tenant-config-input"
                 value={selectedQueue}
                 onChange={(e) => handleQueueChange(e.target.value)}
-                disabled={running}
+                disabled={running || queues.length === 0}
               >
-                {queues.map((queue) => (
-                  <option key={queue.name} value={queue.name}>
-                    {queue.label} ({queue.name})
-                  </option>
-                ))}
+                {queues.length === 0 ? (
+                  <option value="">No queues in catalog</option>
+                ) : (
+                  <>
+                    {!selectedQueue ? <option value="">Select queue…</option> : null}
+                    {queues.map((queue) => (
+                      <option key={queue.name} value={queue.name}>
+                        {queue.label} ({queue.name})
+                      </option>
+                    ))}
+                  </>
+                )}
               </select>
             </label>
 
@@ -316,11 +352,20 @@ export function BuilderRunDialog({
                 onChange={(e) => setSelectedWorkflowId(e.target.value)}
                 disabled={running || queueWorkflows.length === 0}
               >
-                {queueWorkflows.map((workflow) => (
-                  <option key={workflow.fileName} value={workflow.id ?? workflow.fileName}>
-                    {workflow.label ?? workflow.id ?? workflow.fileName}
+                {queueWorkflows.length === 0 ? (
+                  <option value="">
+                    {workflows.length === 0 ? 'No workflow presets loaded' : 'No workflows for this queue'}
                   </option>
-                ))}
+                ) : (
+                  <>
+                    {!selectedWorkflowId ? <option value="">Select workflow…</option> : null}
+                    {queueWorkflows.map((workflow) => (
+                      <option key={workflow.fileName} value={workflow.id ?? workflow.fileName}>
+                        {workflow.label ?? workflow.id ?? workflow.fileName}
+                      </option>
+                    ))}
+                  </>
+                )}
               </select>
             </label>
 

@@ -1,5 +1,5 @@
 # Combined image: olo-be (Spring Boot) + olo-ui (nginx). Both run in one container.
-# Build from repo root. olo-be embeds static/catalog/*.json (from olo-core dist or CI copy).
+# Build from repo root. CI copies olo-core dist/catalog and current-active workflows into olo-be before build.
 
 # ---- Build backend (olo-be) ----
 FROM gradle:8.5-jdk17-alpine AS be-builder
@@ -25,16 +25,20 @@ WORKDIR /app
 # Backend jar (Gradle outputs to build/libs/)
 COPY --from=be-builder /build/olo-be/build/libs/olo-be-*.jar /app/olo-be.jar
 
+# Workflow presets (CI: olo-mono current-active → olo-be/docker/runtime-configuration)
+COPY olo-be/docker/runtime-configuration /app/olo-configuration
+
 # Frontend static files
 COPY --from=ui-builder /build/olo-ui/dist /usr/share/nginx/html
 
 # Nginx: serve UI and proxy /api to backend on 127.0.0.1:8082
-# Alpine includes conf.d in main context (server not allowed); server blocks go in http.d (included inside http {}).
 RUN mkdir -p /etc/nginx/http.d
 COPY docker-nginx.conf /etc/nginx/http.d/default.conf
 
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
+
+ENV OLO_CONFIGURATION_DIRECTORY=/app/olo-configuration
 
 EXPOSE 80
 

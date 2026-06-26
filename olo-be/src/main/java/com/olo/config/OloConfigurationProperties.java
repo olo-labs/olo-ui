@@ -6,8 +6,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 /**
- * Folder of active workflow JSON files ({@code olo-configuration/current-active/*.json}).
- * Place pipeline definitions here manually; point at a Drive-synced copy if needed.
+ * Folder of active workflow JSON under {@code olo-configuration/current-active}.
+ * Scans recursively; presets may live in subfolders such as {@code agents/agent.json}.
  */
 @ConfigurationProperties(prefix = "olo.configuration")
 public class OloConfigurationProperties {

@@ -38,6 +38,7 @@ public class WorkflowConfigurationService {
     public List<WorkflowSummary> listWorkflows() throws IOException {
         Path root = configurationRoot();
         List<WorkflowSummary> summaries = new ArrayList<>();
+        // Recursive: supports current-active/agents/agent.json and similar layouts.
         try (Stream<Path> walk = Files.walk(root)) {
             walk.filter(Files::isRegularFile)
                     .filter(path -> path.getFileName().toString().endsWith(".json"))
