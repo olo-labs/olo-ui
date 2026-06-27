@@ -134,6 +134,20 @@ export const SECTIONS: SectionConfig[] = [
 
       {
 
+        id: 'log',
+
+        label: 'Log',
+
+        description: 'View runtime-injected workflow graphs (read-only)',
+
+        status: 'available',
+
+        featureId: 'workflowConfiguration',
+
+      },
+
+      {
+
         id: 'builder',
 
         label: 'Builder',

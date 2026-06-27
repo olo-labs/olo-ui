@@ -36,6 +36,8 @@ Pass with -e or --env-file. Backend (Spring Boot) reads:
   SPRING_DATA_REDIS_PORT=6379
   OLO_TENANT_IDS=olo:tenants          (Redis key for tenant list)
   SPRING_DATA_REDIS_PASSWORD=...      (if Redis requires auth)
+  OLO_CONFIGURATION_DIRECTORY=/data/olo-configuration   (workflow presets)
+  OLO_LOG_DIRECTORY=/data/olo-configuration/log         (runtime graph logs, read-only in UI)
 
 To disable Redis and use in-memory tenant store (data lost on restart):
   SPRING_AUTOCONFIGURE_EXCLUDE=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration

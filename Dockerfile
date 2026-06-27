@@ -39,6 +39,7 @@ COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
 ENV OLO_CONFIGURATION_DIRECTORY=/app/olo-configuration
+ENV OLO_LOG_DIRECTORY=/app/olo-configuration/log
 
 EXPOSE 80
 

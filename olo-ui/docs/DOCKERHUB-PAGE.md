@@ -22,6 +22,7 @@ Olo — backend (olo-be) + frontend (olo-ui) in one container.
   • nginx serves the React UI on port 80
   • Spring Boot API on 8082 (proxied as /api)
   • Workflow builder: graph canvas, variables, tools, hooks, agent presets
+  • Read-only Log view: runtime-injected graphs from olo-configuration/log/
   • Reads/writes olo-configuration JSON from a configurable folder
 
 Quick start
@@ -43,6 +44,9 @@ Pass with -e or --env-file:
 
   # Workflow preset folder (local path or Drive-synced directory in the container)
   OLO_CONFIGURATION_DIRECTORY=/data/olo-configuration
+
+  # Dynamic subgraph injection logs (optional; default: {configuration}/log or sibling log/)
+  OLO_LOG_DIRECTORY=/data/olo-configuration/log
 
 To disable Redis (in-memory tenants, data lost on restart):
   SPRING_AUTOCONFIGURE_EXCLUDE=org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration

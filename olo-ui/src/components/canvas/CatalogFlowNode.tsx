@@ -1,6 +1,7 @@
 import { memo, type CSSProperties } from 'react'
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { catalogStore } from '../../store/catalogStore'
+import { graphLogStore } from '../../store/graphLogStore'
 import { workflowConfigurationStore } from '../../store/workflowConfigurationStore'
 import { nodeTooltipLines } from '../../lib/canvasLabels'
 import { findCatalogComponent } from '../../lib/catalogLookup'
@@ -195,10 +196,12 @@ function InlineLateralPorts({
 
 function CatalogFlowNodeComponent({ id, data, selected }: NodeProps) {
   const catalog = catalogStore.getState().catalog
-  const draft = workflowConfigurationStore((s) => s.draft)
+  const builderDraft = workflowConfigurationStore((s) => s.draft)
+  const logDraft = graphLogStore((s) => s.draft)
   const updateDraft = workflowConfigurationStore((s) => s.updateDraft)
   const nodeData = data as CatalogFlowNodeData
   const readOnly = Boolean(nodeData.readOnly)
+  const draft = readOnly && logDraft ? logDraft : builderDraft
   const workflowNode = draft?.nodes?.find((n) => n.id === id)
   const presentation = nodeData.presentation
   const portColors = resolvePortColors(draft)

@@ -1,9 +1,14 @@
-import { WorkflowCanvas } from './canvas/WorkflowCanvas'
+import { WorkflowCanvas, type WorkflowCanvasMode } from './canvas/WorkflowCanvas'
 
-export function StudioCanvas() {
+export interface StudioCanvasProps {
+  mode?: WorkflowCanvasMode
+}
+
+export function StudioCanvas({ mode = 'builder' }: StudioCanvasProps) {
+  const readOnly = mode === 'log'
   return (
     <div className="studio-canvas">
-      <WorkflowCanvas />
+      <WorkflowCanvas readOnly={readOnly} mode={mode} />
     </div>
   )
 }

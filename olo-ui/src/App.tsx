@@ -17,6 +17,7 @@ import type { Tenant } from './types/tenant'
 import { useUIStore } from './store/ui'
 import { tenantConfigStore } from './store/tenantConfig'
 import { workflowConfigurationStore } from './store/workflowConfigurationStore'
+import { graphLogStore } from './store/graphLogStore'
 import { catalogStore } from './store/catalogStore'
 import { presetParametersForWorkflow } from './lib/catalogLookup'
 import { downloadWorkflowJson, readWorkflowFile, renameWorkflowPath } from './lib/workflowConfiguration'
@@ -62,8 +63,9 @@ function App() {
   const isTenantAdmin = sectionId === 'administration' && subId === 'tenants'
   const isWorkflowAgents = sectionId === 'workflows' && subId === 'agents'
   const isWorkflowBuilder = sectionId === 'workflows' && subId === 'builder'
+  const isWorkflowLog = sectionId === 'workflows' && subId === 'log'
   const showComponentsPanel = isWorkflowBuilder
-  const needsCatalog = isWorkflowBuilder || isWorkflowAgents
+  const needsCatalog = isWorkflowBuilder || isWorkflowAgents || isWorkflowLog
   const needsWorkflows = sectionId === 'workflows'
 
   useEffect(() => {
@@ -91,6 +93,11 @@ function App() {
     }
     if (parsed.sectionId !== 'workflows') {
       workflowConfigurationStore.getState().clearSelection()
+      graphLogStore.getState().clearSelection()
+    } else if (parsed.subId === 'log') {
+      workflowConfigurationStore.getState().clearSelection()
+    } else {
+      graphLogStore.getState().clearSelection()
     }
   }, [location.pathname, location.search, location.key, navigate, setSectionSub, setRunId, setTenantId])
 
@@ -126,10 +133,13 @@ function App() {
     if (needsWorkflows) {
       workflowConfigurationStore.getState().loadWorkflows()
     }
+    if (isWorkflowLog) {
+      graphLogStore.getState().loadLogs()
+    }
     if (needsWorkflows && !catalogStore.getState().catalog && !catalogStore.getState().loading) {
       catalogStore.getState().loadCatalog()
     }
-  }, [needsWorkflows])
+  }, [needsWorkflows, isWorkflowLog])
 
   useEffect(() => {
     if (sectionId != null) {
@@ -166,7 +176,7 @@ function App() {
       buildPathWithQuery(buildPath(sid, sub), {
         ...params,
         props: openProps ? params.props : 0,
-        tools: subOption?.componentsPanel ? 1 : params.tools,
+        tools: subOption?.componentsPanel ? 1 : 0,
       }),
     )
   }
@@ -279,7 +289,7 @@ function App() {
     ? presetParametersForWorkflow(catalog, workflowDraft)
     : []
 
-  const showWorkflowProperties = isWorkflowAgents || isWorkflowBuilder
+  const showWorkflowProperties = (isWorkflowAgents || isWorkflowBuilder) && !isWorkflowLog
 
   if (!backendReady) {
     return (

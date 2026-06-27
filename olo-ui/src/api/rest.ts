@@ -1,3 +1,4 @@
+import type { GraphLogSummary } from '../types/graphLog'
 import type { StudioCatalog } from '../types/catalog'
 import type { Tenant } from '../types/tenant'
 import type { ModelProvider, WorkflowDocument, WorkflowSummary } from '../types/workflow'
@@ -264,6 +265,25 @@ export async function getConfigurationRoot(): Promise<string> {
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   const data = (await res.json()) as { directory?: string }
   return data.directory ?? ''
+}
+
+export async function listGraphLogs(): Promise<GraphLogSummary[]> {
+  const res = await fetch(`${API_BASE}/configuration/logs`)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json()
+}
+
+export async function getGraphLogRoot(): Promise<string> {
+  const res = await fetch(`${API_BASE}/configuration/logs/meta/root`)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const data = (await res.json()) as { directory?: string }
+  return data.directory ?? ''
+}
+
+export async function getGraphLog(fileName: string): Promise<WorkflowDocument> {
+  const res = await fetch(`${API_BASE}/configuration/logs/${encodeWorkflowPath(fileName)}`)
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  return res.json()
 }
 
 export async function getDropdownDetails(

@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { refreshOloStack } from '../../api/rest'
 import { catalogStore } from '../../store/catalogStore'
+import { graphLogStore } from '../../store/graphLogStore'
 import { workflowConfigurationStore } from '../../store/workflowConfigurationStore'
 import { useUIStore } from '../../store/ui'
+import { graphLogOptionLabel, graphLogShortTimestamp } from '../../lib/graphLog'
 import { BuilderRunDialog } from '../builder/BuilderRunDialog'
+import type { WorkflowCanvasMode } from './WorkflowCanvas'
 
 function SaveIcon() {
   return (
@@ -86,17 +89,34 @@ function workflowOptionLabel(
 
 export interface CanvasToolbarProps {
   readOnly?: boolean
+  mode?: WorkflowCanvasMode
 }
 
-export function CanvasToolbar({ readOnly = false }: CanvasToolbarProps) {
+export function CanvasToolbar({ readOnly = false, mode = 'builder' }: CanvasToolbarProps) {
+  const isLogMode = mode === 'log'
   const workflows = workflowConfigurationStore((s) => s.workflows)
   const workflowsLoading = workflowConfigurationStore((s) => s.loading)
-  const selectedFileName = workflowConfigurationStore((s) => s.selectedFileName)
-  const draft = workflowConfigurationStore((s) => s.draft)
-  const dirty = workflowConfigurationStore((s) => s.dirty)
-  const error = workflowConfigurationStore((s) => s.error)
+  const selectedWorkflowFile = workflowConfigurationStore((s) => s.selectedFileName)
+  const workflowDraft = workflowConfigurationStore((s) => s.draft)
+  const workflowDirty = workflowConfigurationStore((s) => s.dirty)
+  const workflowError = workflowConfigurationStore((s) => s.error)
   const selectWorkflow = workflowConfigurationStore((s) => s.selectWorkflow)
   const saveDraft = workflowConfigurationStore((s) => s.saveDraft)
+
+  const logs = graphLogStore((s) => s.logs)
+  const logsLoading = graphLogStore((s) => s.loading)
+  const selectedLogFile = graphLogStore((s) => s.selectedFileName)
+  const logDraft = graphLogStore((s) => s.draft)
+  const logError = graphLogStore((s) => s.error)
+  const selectLog = graphLogStore((s) => s.selectLog)
+  const reloadLogs = graphLogStore((s) => s.reloadFromDisk)
+
+  const selectedFileName = isLogMode ? selectedLogFile : selectedWorkflowFile
+  const draft = isLogMode ? logDraft : workflowDraft
+  const dirty = isLogMode ? false : workflowDirty
+  const error = isLogMode ? logError : workflowError
+  const entriesLoading = isLogMode ? logsLoading : workflowsLoading
+  const entries = isLogMode ? logs : workflows
   const tenantId = useUIStore((s) => s.tenantId)
 
   const [saving, setSaving] = useState(false)
@@ -106,6 +126,10 @@ export function CanvasToolbar({ readOnly = false }: CanvasToolbarProps) {
 
   const handleWorkflowChange = async (fileName: string) => {
     if (!fileName || fileName === selectedFileName) return
+    if (isLogMode) {
+      await selectLog(fileName)
+      return
+    }
     if (dirty) {
       const discard = window.confirm(
         'You have unsaved changes. Discard them and switch workflow?',
@@ -113,6 +137,30 @@ export function CanvasToolbar({ readOnly = false }: CanvasToolbarProps) {
       if (!discard) return
     }
     await selectWorkflow(fileName)
+  }
+
+  const handleReloadEntries = async () => {
+    if (reloadingUi) return
+    if (!isLogMode && dirty) {
+      const discard = window.confirm('Discard unsaved changes and reload from disk?')
+      if (!discard) return
+    }
+    setReloadingUi(true)
+    try {
+      if (isLogMode) {
+        await reloadLogs()
+      } else {
+        await Promise.all([
+          catalogStore.getState().loadCatalog(),
+          workflowConfigurationStore.getState().reloadFromDisk(),
+        ])
+      }
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'Reload failed'
+      window.alert(`Reload from disk failed: ${message}`)
+    } finally {
+      setReloadingUi(false)
+    }
   }
 
   const handleSave = async () => {
@@ -167,31 +215,17 @@ export function CanvasToolbar({ readOnly = false }: CanvasToolbarProps) {
   }
 
   const handleDiscardChanges = async () => {
-    if (reloadingUi) return
-    if (dirty) {
-      const discard = window.confirm('Discard unsaved changes and reload from disk?')
-      if (!discard) return
-    }
-    setReloadingUi(true)
-    try {
-      await Promise.all([
-        catalogStore.getState().loadCatalog(),
-        workflowConfigurationStore.getState().reloadFromDisk(),
-      ])
-    } catch (e) {
-      const message = e instanceof Error ? e.message : 'Reload failed'
-      window.alert(`Reload from disk failed: ${message}`)
-    } finally {
-      setReloadingUi(false)
-    }
+    await handleReloadEntries()
   }
 
-  const discardDisabled = readOnly || reloadingUi || workflowsLoading
-  const discardTitle = reloadingUi
-    ? 'Reloading…'
-    : dirty
-      ? 'Discard changes and reload from disk'
-      : 'Reload from disk'
+  const discardDisabled = readOnly ? reloadingUi || entriesLoading : reloadingUi || workflowsLoading
+  const discardTitle = isLogMode
+    ? (reloadingUi ? 'Reloading…' : 'Reload graph logs from disk')
+    : reloadingUi
+      ? 'Reloading…'
+      : dirty
+        ? 'Discard changes and reload from disk'
+        : 'Reload from disk'
   const saveDisabled = readOnly || !draft || !selectedFileName || saving || !dirty
   const saveTitle = saving
     ? 'Saving…'
@@ -206,24 +240,38 @@ export function CanvasToolbar({ readOnly = false }: CanvasToolbarProps) {
       <div className="workflow-canvas-toolbar">
         <div className="workflow-canvas-toolbar-left">
           <label className="workflow-canvas-select-wrap">
-            <span className="visually-hidden">Workflow</span>
+            <span className="visually-hidden">{isLogMode ? 'Logged graph' : 'Workflow'}</span>
             <select
               className="workflow-canvas-select"
               value={selectedFileName ?? ''}
-              disabled={workflowsLoading || workflows.length === 0}
+              disabled={entriesLoading || entries.length === 0}
               onChange={(e) => void handleWorkflowChange(e.target.value)}
-              aria-label="Select workflow"
+              aria-label={isLogMode ? 'Select logged graph' : 'Select workflow'}
             >
               <option value="" disabled>
-                {workflowsLoading ? 'Loading workflows…' : 'Select workflow…'}
+                {entriesLoading
+                  ? (isLogMode ? 'Loading graph logs…' : 'Loading workflows…')
+                  : (isLogMode ? 'Select logged graph…' : 'Select workflow…')}
               </option>
-              {workflows.map((workflow) => (
-                <option key={workflow.fileName} value={workflow.fileName}>
-                  {workflowOptionLabel(workflow.label, workflow.id, workflow.fileName)}
-                </option>
-              ))}
+              {isLogMode
+                ? logs.map((entry) => (
+                    <option key={entry.fileName} value={entry.fileName}>
+                      {graphLogOptionLabel(entry)}
+                      {entry.timestamp ? ` (${graphLogShortTimestamp(entry.timestamp)})` : ''}
+                    </option>
+                  ))
+                : workflows.map((workflow) => (
+                    <option key={workflow.fileName} value={workflow.fileName}>
+                      {workflowOptionLabel(workflow.label, workflow.id, workflow.fileName)}
+                    </option>
+                  ))}
             </select>
           </label>
+          {isLogMode ? (
+            <span className="workflow-canvas-toolbar-readonly-badge" title="Drag nodes to rearrange for visibility; changes are not saved">
+              Read-only
+            </span>
+          ) : null}
           {draft?.emoji ? (
             <span className="workflow-canvas-toolbar-emoji" aria-hidden>
               {draft.emoji}
@@ -282,17 +330,37 @@ export function CanvasToolbar({ readOnly = false }: CanvasToolbarProps) {
               </button>
             </div>
           </div>
-        ) : null}
+        ) : (
+          <div className="workflow-canvas-toolbar-right">
+            {error ? (
+              <span className="workflow-canvas-toolbar-error" title={error}>
+                {isLogMode ? 'Load failed' : 'Save failed'}
+              </span>
+            ) : null}
+            <button
+              type="button"
+              className="workflow-canvas-icon-btn"
+              onClick={() => void handleReloadEntries()}
+              disabled={reloadingUi || entriesLoading}
+              title={discardTitle}
+              aria-label={discardTitle}
+            >
+              <RefreshIcon />
+            </button>
+          </div>
+        )}
       </div>
 
-      <BuilderRunDialog
-        open={runOpen}
-        initialWorkflowLabel={draft?.label ?? draft?.id ?? 'Workflow'}
-        initialWorkflowId={draft?.id?.trim() ?? ''}
-        initialTaskQueue={taskQueue}
-        tenantId={tenantId}
-        onClose={() => setRunOpen(false)}
-      />
+      {!isLogMode ? (
+        <BuilderRunDialog
+          open={runOpen}
+          initialWorkflowLabel={draft?.label ?? draft?.id ?? 'Workflow'}
+          initialWorkflowId={draft?.id?.trim() ?? ''}
+          initialTaskQueue={taskQueue}
+          tenantId={tenantId}
+          onClose={() => setRunOpen(false)}
+        />
+      ) : null}
     </>
   )
 }

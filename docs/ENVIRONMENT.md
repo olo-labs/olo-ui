@@ -14,6 +14,9 @@ This document describes how to use environment variables with Olo (olo-be and th
 | **OLO_TENANT_IDS** | `olo:tenants` | Redis key where the tenant list is stored. Set via env or `olo.tenant.ids` in Spring. |
 | **SPRING_AUTOCONFIGURE_EXCLUDE** | — | Optional. Set to `org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration` to disable Redis and use in-memory tenant store (data lost on restart). |
 | **SPRING_DATA_REDIS_PASSWORD** | — | Optional. Redis password when your Redis server requires auth. |
+| **OLO_CONFIGURATION_DIRECTORY** | `../../olo-mono/olo-definition/olo-configuration/current-active` (dev) | Active workflow preset folder (`olo.configuration.directory`). |
+| **OLO_LOG_DIRECTORY** | — | Graph log folder (`olo.configuration.log-directory`). When unset, olo-be resolves `{configuration}/log` or sibling `olo-configuration/log`. |
+| **OLO_CATALOG_DIRECTORY** | — | Optional override for merged `catalog.json` (Docker image bundles classpath catalog). |
 
 Spring Boot maps environment variables to properties: uppercase with underscores become lowercase with dots (e.g. `OLO_TENANT_IDS` → `olo.tenant.ids`, `SPRING_DATA_REDIS_HOST` → `spring.data.redis.host`).
 

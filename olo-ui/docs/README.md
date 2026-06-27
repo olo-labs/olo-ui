@@ -20,7 +20,8 @@ Frontend-specific documentation for the **olo-ui** package (`olo-ui/olo-ui/`). C
 | Area | Route | Capability |
 |------|-------|------------|
 | Workflows → Builder | `/workflows/builder` | Drag-and-drop graph canvas, variables, tools, hooks, child workflows, available agents |
-| Workflows → Import / Export | `/workflows/import-export` | List, import, export, save `olo-configuration` JSON |
+| Workflows → Agents | `/workflows/agents` | Tree view of presets; import, export, save `olo-configuration` JSON |
+| Workflows → Log | `/workflows/log` | Read-only canvas of runtime-injected graphs from `olo-configuration/log/`; drag nodes to rearrange (session-only) |
 | Administration → Tenants | `/administration/tenants` | Tenant CRUD |
 | Overview, Executions, Observability, Extensions | `/overview`, … | Scheduled placeholders |
 
@@ -41,10 +42,14 @@ Open `http://localhost:3000` → defaults to **Workflows → Builder**.
 
 ### Workflow editor workflow
 
-1. **Import / Export** — select or import `agent.json` (or any preset from `olo.configuration.directory`).
+1. **Agents** — select or import `agent.json` (or any preset from `olo.configuration.directory`).
 2. **Builder** — drag catalog nodes, connect edges, enable tools/hooks/agents in the Builder panel.
 3. **Properties** — edit catalog-matched workflow parameters (temperature, model, etc.).
 4. **Save** — writes back to the configuration folder (Drive-synced if configured).
+
+### Runtime graph logs
+
+After a workflow run injects a dynamic subgraph, the kernel writes JSON under **`olo-configuration/log/`**. Open **Workflows → Log** to inspect the merged graph in a read-only canvas. Use the toolbar dropdown to switch logs; drag nodes to improve layout (not persisted).
 
 ### Key dependencies
 
@@ -84,7 +89,7 @@ From [docs/](../../docs/):
 | Path | Role |
 |------|------|
 | `olo-mono/olo-core/dist/catalog/` | Studio catalog JSON (nodes, tools, hooks, presets) |
-| `olo-mono/olo-definition/olo-configuration/` | Default workflow preset JSON |
+| `olo-mono/olo-definition/olo-configuration/` | Default workflow preset JSON and runtime graph logs (`log/`) |
 | `olo-ui/olo-be/` | Spring Boot API serving catalog + configuration folder |
 
 See [olo-ui/README.md](../README.md) for Gradle build and Storybook.

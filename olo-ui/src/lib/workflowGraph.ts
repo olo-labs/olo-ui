@@ -30,6 +30,7 @@ import {
 import type { Node, Edge } from '@xyflow/react'
 import type { NodePresentation } from './nodePresentation'
 import { uniqueNodeId } from './workflowNodeId'
+import { layoutLogWorkflowNodes } from './logGraphLayout'
 
 export function resolveNodeDisplayLabel(
   node: Pick<WorkflowNode, 'id' | 'label' | 'type'>,
@@ -252,16 +253,22 @@ function workflowEdgeEndpoints(edge: WorkflowEdge): { source: string; target: st
 export function workflowToFlow(
   workflow: WorkflowDocument,
   catalog: StudioCatalog | null,
-  options?: { readOnly?: boolean },
+  options?: { readOnly?: boolean; allowNodeDrag?: boolean; autoLayout?: boolean },
 ): { nodes: Node<CatalogFlowNodeData>[]; edges: Edge[] } {
   const readOnly = Boolean(options?.readOnly)
+  const allowNodeDrag = Boolean(options?.allowNodeDrag)
+  const autoLayout = Boolean(options?.autoLayout)
   const workflowNodes = workflow.nodes ?? []
   const portColors = resolvePortColors(workflow)
+  const layoutPositions = autoLayout ? layoutLogWorkflowNodes(workflow) : null
   const nodes: Node<CatalogFlowNodeData>[] = workflowNodes.map((node, index) => {
     const workflowType = normalizeNodeType(node.type)
     const descriptor = findCatalogComponent(catalog, workflowType, node)
     const presentation = resolveNodePresentation(workflow, node, catalog)
-    const position = readDesignerPosition(node) ?? defaultNodePosition(workflow, index)
+    const position =
+      layoutPositions?.get(node.id)
+      ?? readDesignerPosition(node)
+      ?? defaultNodePosition(workflow, index)
     const catalogId =
       (typeof node.configuration?.toolId === 'string' && node.configuration.toolId)
       || (typeof node.configuration?.hookId === 'string' && node.configuration.hookId)
@@ -270,7 +277,7 @@ export function workflowToFlow(
       id: node.id,
       type: FLOW_NODE_TYPE,
       position,
-      draggable: readOnly ? false : undefined,
+      draggable: readOnly && !allowNodeDrag ? false : undefined,
       data: {
         label: resolveNodeDisplayLabel(node, catalog),
         emoji: presentation.emoji ?? descriptor?.emoji,

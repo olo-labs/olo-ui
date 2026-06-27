@@ -252,6 +252,14 @@ export function MainContent({
 
 
 
+    if (section.id === 'workflows' && subId === 'log') {
+
+      return <StudioCanvas mode="log" />
+
+    }
+
+
+
     if (options.length === 0) {
 
       return <ComingSoon title={section.label} />

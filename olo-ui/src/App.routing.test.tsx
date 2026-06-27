@@ -8,7 +8,9 @@ vi.mock('./api/rest', () => ({
   getTenants: vi.fn().mockResolvedValue([]),
   getCatalog: vi.fn().mockResolvedValue({ schemaVersion: '1.0', nodes: [] }),
   listWorkflowConfigurations: vi.fn().mockResolvedValue([]),
-  getConfigurationRoot: vi.fn().mockResolvedValue({ directory: '/tmp' }),
+  getConfigurationRoot: vi.fn().mockResolvedValue('/tmp'),
+  listGraphLogs: vi.fn().mockResolvedValue([]),
+  getGraphLogRoot: vi.fn().mockResolvedValue('/tmp/log'),
 }))
 
 vi.mock('./config/features', async (importOriginal) => {

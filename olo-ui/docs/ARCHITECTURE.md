@@ -13,7 +13,7 @@ For contributor conventions (state flow, store rules, naming), see the repositor
 | Section | Route | Status |
 |---------|-------|--------|
 | **Overview** | `/overview` | Scheduled |
-| **Workflows** | `/workflows/builder`, `/workflows/agents` | **Primary product** — graph editor + olo-configuration |
+| **Workflows** | `/workflows/builder`, `/workflows/agents`, `/workflows/log` | **Primary product** — graph editor, preset management, runtime graph logs |
 | **Executions** | `/executions` | Scheduled |
 | **Observability** | `/observability` | Scheduled |
 | **Extensions** | `/extensions` | Scheduled |
@@ -42,11 +42,13 @@ The UI is **REST-oriented**: server data flows through `src/api/rest.ts` into Zu
 │  • Tenants, dropdowns, health                                         │
 │  • Extension catalog (static JSON from olo-core)                        │
 │  • Workflow configuration files (olo-configuration folder)            │
+│  • Dynamic subgraph injection logs (olo-configuration/log)            │
 └───────────────┬─────────────────────────────┬───────────────────────────┘
                 │                             │
                 ▼                             ▼
          Redis (optional)              Filesystem / Drive-synced folder
          tenant list                   olo-configuration/*.json
+                                      olo-configuration/log/*.json
 ```
 
 **olo-be intentionally has no `org.olo` Java dependencies.** Catalog and workflow documents are served as JSON. Editor metadata comes from **olo-core**; workflow definitions come from **olo-definition/olo-configuration**.
@@ -73,6 +75,8 @@ olo-ui/                          # Repository root
 │   │   │   └── workflowConfiguration.ts
 │   │   ├── routes.ts
 │   │   ├── store/
+│   │   │   ├── workflowConfigurationStore.ts
+│   │   │   └── graphLogStore.ts     # Read-only runtime graph logs
 │   │   ├── styles/
 │   │   └── types/               # catalog.ts, workflow.ts, layout.ts
 │   ├── docs/
@@ -87,9 +91,16 @@ olo-ui/                          # Repository root
 
 `App.tsx` wires URL sync, health gate, panel layout, and store subscriptions. It does **not** own domain logic.
 
-### Workflows → Builder (four panels)
+### Workflows layout
+
+The **Builder panel** is resizable (drag handle between Builder and Canvas). Query param `tools=1` controls its visibility (`toolsPanelExpanded` in `ui` store). It appears **only** on **Workflows → Builder** — not on Agents or Log.
+
+**List + form views** (Agents, Administration → Tenants) hide the Builder panel — main list + Properties form only.
+
+**Log view** (Workflows → Log) uses the same React Flow canvas as Builder in **read-only** mode: no Builder panel, no save/run, no connect/add/delete. Users may **drag nodes** to rearrange the layout for visibility (session-only; not written to disk).
 
 ```
+Workflows → Builder (four panels)
 ┌──────────┬─────────────┬──────────────────────┬──────────────┐
 │  Nav     │  Builder    │  Canvas              │  Properties  │
 │          │  panel      │  (React Flow)        │              │
@@ -100,11 +111,14 @@ olo-ui/                          # Repository root
 │          │ Child WFs   │                      │              │
 │          │ Agents      │                      │              │
 └──────────┴─────────────┴──────────────────────┴──────────────┘
+
+Workflows → Log (three panels — Builder panel hidden)
+┌──────────┬────────────────────────────────────┬──────────────┐
+│  Nav     │  Canvas (read-only)               │  Properties  │
+│          │  Select log from toolbar dropdown │  (empty)     │
+│          │  Drag nodes to rearrange (local)  │              │
+└──────────┴────────────────────────────────────┴──────────────┘
 ```
-
-The **Builder panel** is resizable (drag handle between Builder and Canvas). Query param `tools=1` controls its visibility (`toolsPanelExpanded` in `ui` store).
-
-**List + form views** (Import / Export, Administration → Tenants) hide the Builder panel — Main list + Properties form only.
 
 See [LAYOUT_CONTRACT.md](../../docs/LAYOUT_CONTRACT.md) for panel intent rules.
 
@@ -136,6 +150,7 @@ One **Zustand store per domain** (not per component).
 | `ui.ts` | Panel widths/expansion, navigation mirror, theme |
 | `tenantConfig.ts` | Tenant list, selection, CRUD |
 | `workflowConfigurationStore.ts` | Workflow list, draft, dirty, import/export, `selectedCanvasNodeId` |
+| `graphLogStore.ts` | Runtime graph log list, read-only draft for Log view |
 | `catalogStore.ts` | Extension catalog from olo-core |
 | `runtime.ts`, `ledger.ts`, … | Placeholders for future sections |
 
@@ -162,6 +177,9 @@ All HTTP via `src/api/rest.ts` under **`/api/v1`**:
 | `GET /configuration/workflows` | List workflow `*.json` files |
 | `GET/PUT/DELETE /configuration/workflows/{file}` | Read/write/delete preset |
 | `GET /configuration/workflows/meta/root` | Configured folder path |
+| `GET /configuration/logs` | List dynamic subgraph injection logs (`*.json`) |
+| `GET /configuration/logs/{file}` | Read `mergedGraph` from a log file (read-only) |
+| `GET /configuration/logs/meta/root` | Log directory path |
 
 Dev: Vite proxies `/api` → `localhost:8082`. Docker: nginx proxies to embedded Spring Boot.
 
@@ -217,13 +235,30 @@ Workflow presets are **WorkflowDefinition** JSON — graph, parameters, runtime 
 | **Catalog** | olo-core `dist/catalog` | Widgets, palette, tool/hook metadata |
 | **olo-configuration** | Backend folder (or Drive-synced path) | Persisted workflow documents |
 
-### Import / Export flow
+### Import / Export flow (Workflows → Agents)
 
-1. **Workflows → Import / Export** — list presets from `olo.configuration.directory`.
+1. **Workflows → Agents** — tree/list of presets from `olo.configuration.directory`.
 2. **Import** — file picker; **Export** — browser download.
 3. **Select** — loads `workflowConfigurationStore.draft`.
 4. **Properties** — `WorkflowConfigurationEditor` edits catalog-matched **parameters**.
 5. **Save** — `PUT /api/v1/configuration/workflows/{file}`.
+
+### Log flow (Workflows → Log)
+
+When the Olo runtime injects a dynamic subgraph (tool-call expansion, dynamic-graph expansion), the kernel writes an audit JSON file under **`olo-configuration/log/`**. Each file contains metadata (`kind`, `workflowId`, `timestamp`, …) and a **`mergedGraph`** — the full workflow graph after injection.
+
+1. **Workflows → Log** — toolbar dropdown lists log files (newest first).
+2. **Select** — `graphLogStore` loads `mergedGraph` via `GET /api/v1/configuration/logs/{file}`.
+3. **Canvas** — same `WorkflowCanvas` as Builder with `mode="log"` and `readOnly`: pan/zoom, drag nodes for layout only.
+4. **No save** — layout changes stay in the browser session; log files on disk are never modified.
+
+Log directory resolution (backend):
+
+- `OLO_LOG_DIRECTORY` / `olo.configuration.log-directory` when set
+- otherwise `{configuration}/log` if it exists
+- otherwise sibling `{parent-of-configuration}/log` (typical: `olo-configuration/log` next to `current-active`)
+
+Local default when running olo-be from the repo: `olo-mono/olo-definition/olo-configuration/log/`.
 
 ### Builder flow
 
@@ -239,8 +274,11 @@ No Google Drive API in v1. Point the backend at a synced folder:
 
 ```properties
 # olo-be application.properties
-olo.configuration.directory=C:/Users/you/Google Drive/olo-configuration
+olo.configuration.directory=C:/Users/you/Google Drive/olo-configuration/current-active
+olo.configuration.log-directory=C:/Users/you/Google Drive/olo-configuration/log
 ```
+
+Or via environment: `OLO_CONFIGURATION_DIRECTORY`, `OLO_LOG_DIRECTORY`.
 
 ---
 
@@ -284,9 +322,11 @@ Child workflows and available agents are chosen from other presets in the same c
 | `store/workflowConfigurationStore.ts` | Draft lifecycle, dirty flag, CRUD |
 | `components/WorkflowConfigurationList.tsx` | Import/export list |
 | `components/WorkflowConfigurationEditor.tsx` | Catalog parameter fields |
-| `components/StudioCanvas.tsx` | Builder canvas entry |
+| `components/StudioCanvas.tsx` | Builder canvas entry (`mode="builder"` \| `"log"`) |
 | `components/builder/VariablesSection.tsx` | Variable CRUD UI |
 | `types/workflow.ts` | TypeScript contracts for workflow document slices |
+| `types/graphLog.ts` | Graph log summary types |
+| `lib/graphLog.ts` | Log list labels / timestamps |
 
 ---
 
@@ -298,8 +338,9 @@ Child workflows and available agents are chosen from other presets in the same c
 | `DropdownController` | Tenant/environment/run dropdowns |
 | `ExtensionCatalogController` | Classpath `catalog.json` |
 | `WorkflowConfigurationController` | CRUD on `olo.configuration.directory` |
+| `GraphLogController` | Read-only list/read of `olo.configuration.log-directory` |
 
-`WorkflowConfigurationService` sanitizes file names and prevents path traversal.
+`WorkflowConfigurationService` and `GraphLogService` sanitize file names and prevent path traversal.
 
 See [olo-be/docs/README.md](../../olo-be/docs/README.md) and [ENVIRONMENT.md](../../docs/ENVIRONMENT.md).
 

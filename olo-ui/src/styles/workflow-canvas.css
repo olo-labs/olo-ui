@@ -82,6 +82,18 @@
   line-height: 1;
 }
 
+.workflow-canvas-toolbar-readonly-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted-fg, #a1a1aa);
+  padding: 0.15rem 0.45rem;
+  border: 1px solid var(--border, #3f3f46);
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
 .workflow-canvas-save-btn {
   position: relative;
   display: flex;
@@ -480,11 +492,14 @@
 
 .catalog-flow-node {
   position: relative;
+  display: flex;
+  flex-direction: column;
   min-width: var(--catalog-node-min-width, 240px);
   max-width: var(--catalog-node-max-width, 300px);
   min-height: var(--catalog-node-min-height, auto);
   --catalog-flow-node-pad-x: 0.55rem;
-  padding: 0.45rem var(--catalog-flow-node-pad-x);
+  --catalog-flow-node-pad-y: 0.45rem;
+  padding: var(--catalog-flow-node-pad-y) var(--catalog-flow-node-pad-x);
   background: #18181b;
   border: 1px solid #3f3f46;
   border-radius: 8px;
@@ -523,14 +538,15 @@
 }
 
 .catalog-flow-node-boundary-top {
-  margin-top: calc(-1 * 0.45rem);
+  margin-top: calc(-1 * var(--catalog-flow-node-pad-y));
   padding-bottom: 0.15rem;
   align-items: flex-start;
   justify-content: space-evenly;
 }
 
 .catalog-flow-node-boundary-bottom {
-  margin-bottom: calc(-1 * 0.45rem);
+  margin-top: auto;
+  margin-bottom: calc(-1 * var(--catalog-flow-node-pad-y));
   padding-top: 0.15rem;
   align-items: flex-end;
   justify-content: space-evenly;
@@ -1013,7 +1029,7 @@
   transform: translate(-50%, -50%);
 }
 
-.catalog-flow-node .react-flow__handle-bottom {
+.catalog-flow-node .catalog-flow-port-row-side-bottom .react-flow__handle-bottom {
   bottom: 0;
   transform: translate(-50%, 50%);
 }
