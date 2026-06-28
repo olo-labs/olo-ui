@@ -62,4 +62,35 @@ class WorkflowConfigurationServiceTest {
 
         assertThat(service.readWorkflow("agents/agent.json").get("id").asText()).isEqualTo("agent");
     }
+
+    @Test
+    void listWorkflowsSkipsGraphLogFiles() throws Exception {
+        Files.writeString(
+                tempDir.resolve("agent.json"),
+                """
+                {
+                  "id": "agent",
+                  "label": "Agent"
+                }
+                """);
+        Path logDir = tempDir.resolve("log");
+        Files.createDirectories(logDir);
+        Files.writeString(
+                logDir.resolve("tool-call-agent-agent.json"),
+                """
+                {
+                  "id": "tool-call-agent-agent",
+                  "kind": "tool-call"
+                }
+                """);
+
+        OloConfigurationProperties properties = new OloConfigurationProperties();
+        properties.setDirectory(tempDir.toString());
+        WorkflowConfigurationService service = new WorkflowConfigurationService(properties);
+
+        List<WorkflowConfigurationService.WorkflowSummary> workflows = service.listWorkflows();
+
+        assertThat(workflows).hasSize(1);
+        assertThat(workflows.get(0).fileName()).isEqualTo("agent.json");
+    }
 }

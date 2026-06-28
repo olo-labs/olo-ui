@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Stream;
 
 @Service
@@ -41,7 +42,7 @@ public class WorkflowConfigurationService {
         // Recursive: supports current-active/agents/agent.json and similar layouts.
         try (Stream<Path> walk = Files.walk(root)) {
             walk.filter(Files::isRegularFile)
-                    .filter(path -> path.getFileName().toString().endsWith(".json"))
+                    .filter(path -> isWorkflowPresetFile(root, path))
                     .sorted(Comparator.comparing(path -> root.relativize(path).toString().replace('\\', '/')))
                     .forEach(path -> {
                         try {
@@ -88,6 +89,18 @@ public class WorkflowConfigurationService {
 
     public void deleteWorkflow(String relativePath) throws IOException {
         Files.deleteIfExists(resolveFile(relativePath));
+    }
+
+    static boolean isWorkflowPresetFile(Path root, Path file) {
+        String name = file.getFileName().toString();
+        if (!name.toLowerCase(Locale.ROOT).endsWith(".json")) {
+            return false;
+        }
+        if (name.toLowerCase(Locale.ROOT).endsWith(".injection.json")) {
+            return false;
+        }
+        String relative = root.relativize(file).toString().replace('\\', '/');
+        return !relative.startsWith("log/") && !relative.contains("/log/");
     }
 
     private Path resolveFile(String relativePath) throws IOException {

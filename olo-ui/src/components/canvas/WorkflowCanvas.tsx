@@ -8,6 +8,7 @@ import {
   useNodesState,
   useEdgesState,
   useReactFlow,
+  useUpdateNodeInternals,
   ReactFlowProvider,
   MarkerType,
   type Connection,
@@ -111,6 +112,7 @@ function WorkflowCanvasInner({ readOnly = false, mode = 'builder' }: WorkflowCan
   const [nodes, setNodes, onNodesChange] = useNodesState<Node<CatalogFlowNodeData>>(initial.nodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initial.edges)
   const { screenToFlowPosition, getViewport } = useReactFlow()
+  const updateNodeInternals = useUpdateNodeInternals()
   const syncingRef = useRef(false)
   const canvasHydratingRef = useRef(true)
   const canvasContainerRef = useRef<HTMLDivElement>(null)
@@ -175,8 +177,11 @@ function WorkflowCanvasInner({ readOnly = false, mode = 'builder' }: WorkflowCan
     setEdges(next.edges)
     queueMicrotask(() => {
       syncingRef.current = false
+      requestAnimationFrame(() => {
+        next.nodes.forEach((node) => updateNodeInternals(node.id))
+      })
     })
-  }, [catalog, draft, flowOptions, graphSyncKey, preserveLayoutPositions, setEdges, setNodes])
+  }, [catalog, draft, flowOptions, graphSyncKey, preserveLayoutPositions, setEdges, setNodes, updateNodeInternals])
 
   const persistCanvasView = useCallback(() => {
     if (!draft || readOnly || syncingRef.current || canvasHydratingRef.current) return

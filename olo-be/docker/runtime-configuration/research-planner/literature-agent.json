@@ -1,14 +1,14 @@
 {
-  "id" : "dynamic-graph-creation",
+  "id" : "literature-agent",
   "enabled" : true,
-  "isDefault" : true,
-  "label" : "Dynamic Graph Creation",
-  "role" : "Dynamic Graph Creator",
-  "shortDescription" : "Generates OLO workflow graphs as JSON-only structured output and expands them inline at runtime",
-  "emoji" : "🧩",
+  "isDefault" : false,
+  "label" : "Literature Agent",
+  "role" : "Literature Agent",
+  "shortDescription" : "Finds and summarizes academic papers for a research topic",
+  "emoji" : "📚",
   "designer" : {
     "paletteGroup" : "Agents",
-    "searchKeywords" : [ "dynamic", "graph", "workflow", "json" ],
+    "searchKeywords" : [ "literature", "research", "papers" ],
     "nodeSize" : {
       "width" : 300,
       "height" : 120
@@ -43,7 +43,7 @@
     },
     "nodeTypes" : {
       "AGENT" : {
-        "emoji" : "🧩",
+        "emoji" : "📚",
         "typeLabel" : "Agent",
         "inlineProperties" : [ {
           "id" : "parameters",
@@ -94,14 +94,14 @@
   "availableAgents" : [ ],
   "version" : "1.0.0",
   "capability" : {
-    "name" : "Dynamic Graph Creation",
-    "description" : "Generates OLO workflow graphs as JSON-only structured output and expands them inline at runtime",
-    "tags" : [ "dynamic-graph", "json" ],
+    "name" : "Literature Agent",
+    "description" : "Finds and summarizes academic papers for a research topic",
+    "tags" : [ "literature-agent" ],
     "examples" : [ ],
     "required_inputs" : [ "input" ],
     "required_outputs" : [ "output" ],
     "tool_requirements" : [ ],
-    "required_context" : [ "message", "generatedGraphJson" ]
+    "required_context" : [ "message" ]
   },
   "runtime" : {
     "contractVersion" : "1.0",
@@ -116,6 +116,24 @@
   },
   "state" : { },
   "parameters" : {
+    "maxIterations" : {
+      "type" : "integer",
+      "label" : "Max Iterations",
+      "description" : "Maximum agent reasoning iterations",
+      "defaultValue" : 10,
+      "required" : false,
+      "validation" : {
+        "minimum" : 1.0,
+        "maximum" : 100.0,
+        "step" : 1.0
+      },
+      "ui" : {
+        "widget" : "NUMBER",
+        "group" : "Model Settings",
+        "help" : "Caps how many planner/tool loops the agent may run.",
+        "order" : 1
+      }
+    },
     "model" : {
       "type" : "string",
       "label" : "Model",
@@ -151,7 +169,7 @@
       "type" : "string",
       "label" : "System Prompt",
       "description" : "System prompt for the agent",
-      "defaultValue" : "{message}",
+      "defaultValue" : "Address the request clearly and helpfully.\n\nRequest:\n{message}",
       "required" : false,
       "ui" : {
         "widget" : "TEXTAREA",
@@ -159,24 +177,6 @@
         "help" : "Include {message} to inject the workflow input into the system prompt.",
         "placeholder" : "You are a helpful assistant…\n\n{message}",
         "order" : 0
-      }
-    },
-    "maxIterations" : {
-      "type" : "integer",
-      "label" : "Max Iterations",
-      "description" : "Maximum agent reasoning iterations",
-      "defaultValue" : 10,
-      "required" : false,
-      "validation" : {
-        "minimum" : 1.0,
-        "maximum" : 100.0,
-        "step" : 1.0
-      },
-      "ui" : {
-        "widget" : "NUMBER",
-        "group" : "Model Settings",
-        "help" : "Caps how many planner/tool loops the agent may run.",
-        "order" : 1
       }
     }
   },
@@ -209,7 +209,7 @@
       }
     }
   }, {
-    "id" : "graph-planner",
+    "id" : "agent",
     "type" : "AGENT",
     "ports" : [ {
       "id" : "in",
@@ -227,6 +227,34 @@
         "color" : "#ef4444"
       }
     }, {
+      "id" : "capabilities",
+      "label" : "available tools",
+      "schema" : "capabilities",
+      "type" : "capabilities",
+      "acceptType" : "capabilities",
+      "direction" : "INPUT",
+      "required" : false,
+      "minConnections" : 0,
+      "shortDescription" : "Tools and hooks registered for runtime prompt assembly (0 or more)",
+      "ui" : {
+        "position" : "BOTTOM",
+        "color" : "#22c55e"
+      }
+    }, {
+      "id" : "agentPlug",
+      "label" : "available agents",
+      "schema" : "agent-plug",
+      "type" : "agent-plug",
+      "acceptType" : "agent-plug",
+      "direction" : "INPUT",
+      "required" : false,
+      "minConnections" : 0,
+      "shortDescription" : "Child workflows registered for runtime prompt assembly (0 or more)",
+      "ui" : {
+        "position" : "BOTTOM",
+        "color" : "#a855f7"
+      }
+    }, {
       "id" : "out",
       "label" : "message out",
       "schema" : "message",
@@ -241,18 +269,19 @@
       }
     } ],
     "execution" : {
-      "executionKind" : "ACTIVITY",
-      "executionModel" : "INLINE",
-      "routers" : [ ]
+      "executionKind" : "SUBWORKFLOW",
+      "executionModel" : "CHILD_WORKFLOW",
+      "routers" : [ ],
+      "workflowRef" : {
+        "workflowId" : "literature-agent",
+        "version" : "1.0.0",
+        "inputMapping" : { },
+        "outputMapping" : { }
+      }
     },
     "reads" : [ ],
     "writes" : [ ],
     "configuration" : {
-      "dynamicGraphPlanner" : true,
-      "outputVariable" : "generatedGraphJson",
-      "maxInvalidJsonRetries" : 3,
-      "continueNodeId" : "end",
-      "promptTemplate" : "You are an OLO workflow graph generator.\n\nGoal: produce a valid WorkflowDefinition graph for this request:\n{message}\n\nOutput rules (strict):\n1. Return ONLY a single JSON object — no markdown, no code fences, no commentary, no trailing text.\n2. Do not wrap the JSON in ```json``` blocks.\n3. Every graph MUST include exactly one START node, one END node, and edges connecting START -> steps -> END.\n4. Node type must be one of: START, END, AGENT, TOOL, MODEL, PARALLEL, HUMAN, CONDITION, ROUTER, PLANNER, REFLECTION, EVALUATOR, VECTOR_SEARCH, MEMORY, WORKFLOW_REF.\n   Never use pipe-separated placeholders.\n5. AGENT nodes answer the user in plain conversational text. Only this graph-planner step returns workflow JSON.\n6. Node ids must be unique kebab-case strings.\n7. Prefer the smallest valid graph that satisfies the request.\n8. TOOL nodes require configuration.toolId using olo-core tool ids, for example:\n   olo-core:web-search, olo-core:log-reader, olo-core:cpu-usage, olo-core:memory-usage,\n   olo-core:numeric-metric, olo-core:recently-changed-code, olo-core:calculator, olo-core:http-tool.\n   For news or web lookup requests, prefer olo-core:web-search.\n   For observability tools (log-reader, cpu-usage, memory-usage, numeric-metric), include\n   configuration.arguments with ISO-8601 startTime and endTime when the user mentions a time window.\n   Example: \"arguments\": { \"startTime\": \"2026-06-14T14:30:00Z\", \"endTime\": \"2026-06-14T14:31:00Z\" }\n\nMinimal valid example (follow this shape):\n{\n  \"id\": \"hello-workflow\",\n  \"label\": \"Hello Workflow\",\n  \"nodes\": [\n    { \"id\": \"start\", \"type\": \"START\" },\n    { \"id\": \"greet\", \"type\": \"AGENT\" },\n    { \"id\": \"end\", \"type\": \"END\" }\n  ],\n  \"edges\": [\n    {\n      \"sourceNodeId\": \"start\",\n      \"sourcePortId\": \"out\",\n      \"targetNodeId\": \"greet\",\n      \"targetPortId\": \"in\"\n    },\n    {\n      \"sourceNodeId\": \"greet\",\n      \"sourcePortId\": \"out\",\n      \"targetNodeId\": \"end\",\n      \"targetPortId\": \"in\"\n    }\n  ]\n}\n\nIf a previous attempt failed validation, fix it:\n{generatedGraphJsonValidationError}\n\nRespond with JSON only.",
       "designer" : {
         "position" : {
           "x" : 440,
@@ -293,10 +322,10 @@
   "edges" : [ {
     "sourceNodeId" : "start",
     "sourcePortId" : "out",
-    "targetNodeId" : "graph-planner",
+    "targetNodeId" : "agent",
     "targetPortId" : "in"
   }, {
-    "sourceNodeId" : "graph-planner",
+    "sourceNodeId" : "agent",
     "sourcePortId" : "out",
     "targetNodeId" : "end",
     "targetPortId" : "in"
@@ -307,29 +336,6 @@
     "description" : "",
     "required" : true,
     "scope" : "READONLY_EXTERNAL",
-    "metadata" : { }
-  }, {
-    "name" : "generatedGraphJson",
-    "type" : "string",
-    "description" : "Model-produced workflow graph JSON",
-    "required" : false,
-    "scope" : "LOCAL",
-    "metadata" : {
-      "role" : "generated-graph"
-    }
-  }, {
-    "name" : "generatedGraphJsonRetryCount",
-    "type" : "number",
-    "description" : "Invalid JSON retry counter for the dynamic graph planner",
-    "required" : false,
-    "scope" : "LOCAL",
-    "metadata" : { }
-  }, {
-    "name" : "generatedGraphJsonValidationError",
-    "type" : "string",
-    "description" : "Last validation error from generatedGraphJson, injected into planner retries",
-    "required" : false,
-    "scope" : "LOCAL",
     "metadata" : { }
   }, {
     "name" : "ReturnValue",
@@ -360,19 +366,14 @@
   } ],
   "extensions" : [ ],
   "metadata" : {
-    "dynamicGraphCreation" : {
-      "outputVariable" : "generatedGraphJson",
-      "plannerNodeId" : "graph-planner",
-      "continueNodeId" : "end"
-    },
-    "description" : "Generates OLO workflow graphs as JSON-only structured output and expands them inline at runtime",
     "returnVariable" : "ReturnValue",
+    "role" : "literature-agent",
     "plannerContext" : {
       "selectedAgents" : [ ],
       "selectedTools" : [ ],
       "injectCapabilities" : false,
       "selectedVariables" : [ "message" ]
     },
-    "role" : "dynamic-graph-creation"
+    "description" : "Finds and summarizes academic papers for a research topic"
   }
 }

@@ -552,6 +552,19 @@
   justify-content: space-evenly;
 }
 
+.catalog-flow-node-boundary-bottom .catalog-flow-port-row {
+  position: static;
+}
+
+.catalog-flow-node-boundary-bottom .react-flow__handle-bottom {
+  position: absolute;
+  bottom: 0;
+  top: auto;
+  left: var(--port-slot, 50%);
+  right: auto;
+  transform: translate(-50%, 50%);
+}
+
 .catalog-flow-node-child-workflow {
   min-width: 10.5rem !important;
   max-width: 13.5rem !important;
@@ -993,12 +1006,6 @@
   transform: translate(-50%, -50%);
 }
 
-.catalog-flow-port-row-side-bottom .react-flow__handle-bottom {
-  bottom: 0;
-  top: auto;
-  transform: translate(-50%, 50%);
-}
-
 .catalog-flow-port-row .react-flow__handle-left {
   position: absolute;
   left: 0;
@@ -1027,11 +1034,6 @@
 .catalog-flow-node .react-flow__handle-top {
   top: 0;
   transform: translate(-50%, -50%);
-}
-
-.catalog-flow-node .catalog-flow-port-row-side-bottom .react-flow__handle-bottom {
-  bottom: 0;
-  transform: translate(-50%, 50%);
 }
 
 .components-panel-item.draggable {

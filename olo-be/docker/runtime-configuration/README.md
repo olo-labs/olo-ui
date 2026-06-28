@@ -2,7 +2,7 @@
 
 This folder is copied to `/app/olo-configuration` at container runtime.
 
-- **CI:** refreshed from `olo-mono/olo-definition/olo-configuration/current-active` when that repo checkout includes it.
+- **CI:** refreshed from `olo-mono/olo-configuration/default` plus scenario folders (`research-planner/`, etc.). **`current-active/` is not used** — it is for manual local copies only.
 - **Fallback:** these committed JSON files are used when olo-mono has no `olo-configuration` on GitHub yet.
 
 To update locally from olo-mono:

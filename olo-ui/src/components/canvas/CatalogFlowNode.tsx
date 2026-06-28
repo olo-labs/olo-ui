@@ -1,5 +1,5 @@
-import { memo, type CSSProperties } from 'react'
-import { Handle, Position, type NodeProps } from '@xyflow/react'
+import { memo, useLayoutEffect, type CSSProperties } from 'react'
+import { Handle, Position, useNodeId, useUpdateNodeInternals, type NodeProps } from '@xyflow/react'
 import { catalogStore } from '../../store/catalogStore'
 import { graphLogStore } from '../../store/graphLogStore'
 import { workflowConfigurationStore } from '../../store/workflowConfigurationStore'
@@ -195,6 +195,8 @@ function InlineLateralPorts({
 }
 
 function CatalogFlowNodeComponent({ id, data, selected }: NodeProps) {
+  const nodeId = useNodeId()
+  const updateNodeInternals = useUpdateNodeInternals()
   const catalog = catalogStore.getState().catalog
   const builderDraft = workflowConfigurationStore((s) => s.draft)
   const logDraft = graphLogStore((s) => s.draft)
@@ -257,6 +259,22 @@ function CatalogFlowNodeComponent({ id, data, selected }: NodeProps) {
 
   const hasLateralPorts =
     !isChildWorkflow && (portsBySide.LEFT.length > 0 || portsBySide.RIGHT.length > 0)
+
+  useLayoutEffect(() => {
+    if (!nodeId) return
+    updateNodeInternals(nodeId)
+  }, [
+    nodeId,
+    updateNodeInternals,
+    readOnly,
+    isChildWorkflow,
+    portsBySide.BOTTOM.length,
+    portsBySide.TOP.length,
+    portsBySide.LEFT.length,
+    portsBySide.RIGHT.length,
+    presentation?.height,
+    presentation?.width,
+  ])
 
   return (
     <div

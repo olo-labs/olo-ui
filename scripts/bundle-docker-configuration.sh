@@ -1,30 +1,38 @@
 #!/usr/bin/env bash
-# Copy olo-mono workflow JSON (recursive, including subfolders) for Docker builds.
+# Copy olo-mono workflow JSON (default + scenario collections) for Docker builds.
+# Does not use current-active/ — that folder is for manual local testing only.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DEST="$ROOT/olo-be/docker/runtime-configuration"
-
-WORKFLOW_SRC=""
-for candidate in \
-  "$ROOT/olo-mono/olo-definition/olo-configuration/current-active" \
-  "$ROOT/olo-mono/olo-definition/olo-configuration/default"; do
-  if [ -d "$candidate" ] && [ -n "$(find "$candidate" -name '*.json' -print -quit)" ]; then
-    WORKFLOW_SRC="$candidate"
-    break
-  fi
-done
-if [ -z "$WORKFLOW_SRC" ]; then
-  echo "Missing workflow source. Expected olo-mono/olo-definition/olo-configuration/current-active or .../default" >&2
-  exit 1
-fi
+CONFIG_ROOT="$ROOT/olo-mono/olo-definition/olo-configuration"
+DEFAULT="$CONFIG_ROOT/default"
 
 mkdir -p "$DEST"
-find "$DEST" -mindepth 1 -delete 2>/dev/null || true
-cp -r "$WORKFLOW_SRC"/. "$DEST/"
-count="$(find "$DEST" -name '*.json' | wc -l | tr -d ' ')"
-if [ "$count" = "0" ]; then
-  echo "No workflow JSON files copied from $WORKFLOW_SRC" >&2
+find "$DEST" -mindepth 1 ! -name README.md -exec rm -rf {} + 2>/dev/null || true
+
+if [ ! -d "$DEFAULT" ]; then
+  echo "Missing workflow source: $DEFAULT" >&2
   exit 1
 fi
-echo "Bundled $count workflow preset(s) from $WORKFLOW_SRC into $DEST"
+
+echo "Bundling workflow presets from default + scenario collections"
+cp "$DEFAULT"/*.json "$DEST/"
+for scenario in research-planner travel-planner travel-Planner dynamic-graph-creation; do
+  scenario_dir="$CONFIG_ROOT/$scenario"
+  if [ -d "$scenario_dir" ] && [ -n "$(find "$scenario_dir" -maxdepth 1 -name '*.json' -print -quit)" ]; then
+    target_name="$(basename "$scenario_dir" | tr '[:upper:]' '[:lower:]')"
+    mkdir -p "$DEST/$target_name"
+    cp "$scenario_dir"/*.json "$DEST/$target_name/"
+  fi
+done
+if [ -f "$CONFIG_ROOT/dynamic-graph-creation/dynamic-graph-creation.json" ]; then
+  cp "$CONFIG_ROOT/dynamic-graph-creation/dynamic-graph-creation.json" "$DEST/dynamic-graph-creation.json"
+fi
+
+count="$(find "$DEST" -name '*.json' ! -path '*/log/*' | wc -l | tr -d ' ')"
+if [ "$count" = "0" ]; then
+  echo "No workflow JSON files copied into $DEST" >&2
+  exit 1
+fi
+echo "Bundled $count workflow preset(s) into $DEST"
