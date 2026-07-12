@@ -32,6 +32,8 @@ Then open **http://localhost:3000**. Nginx serves the UI and proxies `/api` to t
 - **Backend:** See [olo-be/README.md](olo-be/README.md) — Java 17+, Gradle, `./gradlew bootRun` (port 8082).
 - **Frontend:** See [olo-ui/README.md](olo-ui/README.md) — Node/Gradle, `npm run dev` (port 3000); ensure olo-be is running for API calls.
 
+**Activate workflow scenarios:** olo-ui → **Administration → Scenarios** — copies a scenario folder into `current-active` and refreshes worker + studio. See [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md#configuration-scenarios-olo-ui).
+
 ## Environment and Docker Compose
 
 **How to use environment variables:** Full reference (all variables, Docker, Compose, local) is in **[docs/ENVIRONMENT.md](docs/ENVIRONMENT.md)**.

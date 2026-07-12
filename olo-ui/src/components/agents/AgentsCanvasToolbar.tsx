@@ -92,9 +92,10 @@ export function AgentsCanvasToolbar({
       </div>
 
       <p className="agents-canvas-hint">
-        Mount or sync a git-controlled folder as your configuration directory and manage agent
-        presets with your usual git workflow until integrated versioning rolls out in the UI
-        (SCHEDULED-V6).
+        Active configuration: <code>current-active/</code> under the scenario catalog. Switch scenarios in{' '}
+        <strong>Administration → Scenarios</strong> (Activate copies a folder and refreshes worker + studio).
+        Until integrated versioning rolls out in the UI (SCHEDULED-V6), use git on{' '}
+        <code>olo-configuration/</code> for history.
       </p>
     </>
   )

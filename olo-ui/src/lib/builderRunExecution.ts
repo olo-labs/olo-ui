@@ -132,10 +132,13 @@ export async function executeBuilderRun(
 export async function cancelBuilderRun(
   runId: string,
   refs: BuilderRunExecutionRefs,
-  callbacks: Pick<BuilderRunExecutionCallbacks, 'appendLog' | 'setCancelling' | 'setError' | 'stopRun'>,
+  callbacks: Pick<
+    BuilderRunExecutionCallbacks,
+    'appendLog' | 'setCancelling' | 'setError' | 'setFinalResponse' | 'setRunning' | 'stopRun'
+  >,
 ): Promise<void> {
   const { activeRunIdRef } = refs
-  const { appendLog, setCancelling, setError, stopRun } = callbacks
+  const { appendLog, setCancelling, setError, setFinalResponse, setRunning, stopRun } = callbacks
   if (!runId.trim()) return
 
   setCancelling(true)
@@ -145,23 +148,34 @@ export async function cancelBuilderRun(
     appendLog('Cancel requested')
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Cancel failed'
+    if (message.includes('no longer in progress')) {
+      appendLog('Run already finished')
+      finishBuilderRun(refs, callbacks, { response: 'Run cancelled.', logLine: 'Run cancelled' })
+      return
+    }
     setError(message)
     appendLog(`ERROR: ${message}`)
     setCancelling(false)
     return
   }
 
-  try {
-    const run = await getRuntimeRun(runId)
-    if (run && isTerminalRunStatus(run.status)) {
-      stopRun()
-      activeRunIdRef.current = null
-      setCancelling(false)
-      if (run.status === 'cancelled') {
-        appendLog('Run cancelled')
-      }
-    }
-  } catch {
-    // polling loop will pick up terminal status
-  }
+  finishBuilderRun(refs, callbacks, { response: 'Run cancelled.', logLine: 'Run cancelled' })
+}
+
+function finishBuilderRun(
+  refs: BuilderRunExecutionRefs,
+  callbacks: Pick<
+    BuilderRunExecutionCallbacks,
+    'appendLog' | 'setCancelling' | 'setFinalResponse' | 'setRunning' | 'stopRun'
+  >,
+  options?: { response?: string; logLine?: string },
+): void {
+  const { activeRunIdRef } = refs
+  const { appendLog, setCancelling, setFinalResponse, setRunning, stopRun } = callbacks
+  stopRun()
+  activeRunIdRef.current = null
+  setCancelling(false)
+  setRunning(false)
+  if (options?.response) setFinalResponse(options.response)
+  if (options?.logLine) appendLog(options.logLine)
 }

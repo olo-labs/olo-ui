@@ -292,6 +292,20 @@ export const SECTIONS: SectionConfig[] = [
 
       },
 
+      {
+
+        id: 'scenarios',
+
+        label: 'Scenarios',
+
+        description: 'Activate workflow configuration folders into current-active',
+
+        status: 'available',
+
+        featureId: 'scenarioConfiguration',
+
+      },
+
     ],
 
   },

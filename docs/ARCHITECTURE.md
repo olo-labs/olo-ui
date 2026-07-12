@@ -251,7 +251,10 @@ For **Runtime vs Ledger** — conceptual separation (live/streaming vs immutable
 | Route parsing, path building | `src/routes.ts` |
 | Panel/nav/theme/tenantId (from URL; panel state in query: menu, tools, props) | `store/ui.ts` |
 | Tenant list, selection, CRUD | `store/tenantConfig.ts` |
-| API calls | `src/api/rest.ts` |
+| Workflow presets (active folder), builder draft | `store/workflowConfigurationStore.ts` |
+| Scenario folder catalog + activate | `store/configurationFolderStore.ts` |
+| Studio catalog (queues, types) | `store/catalogStore.ts` |
+| API calls | `src/api/rest.ts`, `src/api/restConfiguration.ts`, `src/api/restConfigurationFolders.ts` |
 | Section/sub-option definitions | `src/types/layout.ts` |
 | Tools panel items | `src/types/tools.ts` |
 | Feature CSS | `src/styles/<feature>.css` (imported from `index.css`) |

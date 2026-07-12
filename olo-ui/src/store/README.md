@@ -17,6 +17,10 @@ Stores are scoped by **domain** (runtime, ledger, configuration, etc.), not by U
 |-------|--------|---------|
 | `ui.ts` | App shell | Panels, navigation (section/sub/run), theme, tenant dropdown |
 | `tenantConfig.ts` | Configuration (tenants) | Tenant list, selection, CRUD, loading |
+| `workflowConfigurationStore.ts` | Workflows (studio) | Active-folder workflow list, draft editor, save/import/export |
+| `configurationFolderStore.ts` | Configuration (scenarios) | Scenario folder catalog, activate into `current-active`, refresh steps |
+| `catalogStore.ts` | Studio catalog | Temporal queues, workflow types, extension catalog |
+| `graphLogStore.ts` | Workflow log view | Runtime-injected graph JSON under `log/` |
 
 ## Future domains (placeholders)
 
@@ -46,3 +50,4 @@ See **docs/ARCHITECTURE.md** (§5–§6, §6b–§6c) and **docs/DOMAIN_BOUNDARI
 - Use Zustand `create()` and export the hook and optionally `getState()` for non-React callers.
 - Keep domains meaningful: e.g. `runtime` = everything about “current runtime view” (runs list, selected run, metrics filters).
 - Cross-domain data (e.g. “current run”) can live in `ui.ts` (e.g. runId in URL) or in a small `runContext.ts` if both Runtime and Ledger need the same run payload.
+- **Scenario activation** (`configurationFolderStore`) may call `catalogStore` and `workflowConfigurationStore` reload actions after activate — orchestration at the action layer, not cross-store imports in components.

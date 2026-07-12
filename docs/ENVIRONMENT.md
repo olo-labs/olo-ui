@@ -18,11 +18,27 @@ This document describes how to use environment variables with Olo (olo-be and th
 | **OLO_TENANT_IDS** | `olo:tenants` | Redis key where the tenant list is stored. Set via env or `olo.tenant.ids` in Spring. |
 | **SPRING_AUTOCONFIGURE_EXCLUDE** | — | Optional. Set to `org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration` to disable Redis and use in-memory tenant store (data lost on restart). |
 | **SPRING_DATA_REDIS_PASSWORD** | — | Optional. Redis password when your Redis server requires auth. |
-| **OLO_CONFIGURATION_DIRECTORY** | `../../olo-mono/olo-definition/olo-configuration/current-active` (dev) | Active workflow preset folder (`olo.configuration.directory`). |
+| **OLO_CONFIGURATION_DIRECTORY** | `../../olo-mono/olo-definition/olo-configuration/current-active` (dev) | Active workflow preset folder (`olo.configuration.directory`). Parent catalog: sibling scenario folders; activate via olo-ui **Administration → Scenarios**. |
 | **OLO_LOG_DIRECTORY** | — | Graph log folder (`olo.configuration.log-directory`). When unset, olo-be resolves `{configuration}/log` or sibling `olo-configuration/log`. |
 | **OLO_CATALOG_DIRECTORY** | — | Optional override for merged `catalog.json` (Docker image bundles classpath catalog). |
+| **olo.worker.refresh-key** / **OLO_WORKER_REFRESH_KEY** | `olo:worker:refresh` | Redis key for worker config reload (`POST /api/v1/system/refresh`). |
+| **olo.runtime.base-url** | `http://localhost:7080` | Olo chat/runtime backend for stack refresh. |
 
 Spring Boot maps environment variables to properties: uppercase with underscores become lowercase with dots (e.g. `OLO_TENANT_IDS` → `olo.tenant.ids`, `SPRING_DATA_REDIS_HOST` → `spring.data.redis.host`).
+
+---
+
+## Configuration scenarios (olo-ui)
+
+Scenario folders live under `olo-definition/olo-configuration/` (e.g. `log-rca-analysis`, `travel-planner`). The **active** runtime folder is `current-active/`. The Scenarios tab lists only activatable scenario folders — **`current-active`** and **`log`** (runtime injection logs) are excluded.
+
+| Action | How |
+|--------|-----|
+| List scenarios | olo-ui **Administration → Scenarios**, or `GET /api/v1/configuration/folders` |
+| Activate scenario | Click **Activate** in UI, or `POST /api/v1/configuration/folders/{id}/activate` |
+| Refresh worker + studio | Automatic on activate; manual: **Refresh stack** or `POST /api/v1/system/refresh` |
+
+Activation copies the selected folder into `current-active`, clears previous files, writes `.olo-active-source`, and signals the worker via Redis. Worker and studio keep reading `current-active` — no `scanFolder` YAML change required.
 
 ---
 

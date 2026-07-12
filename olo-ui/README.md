@@ -67,3 +67,4 @@ Stories for TenantConfigurationList, TenantConfigForm, and ToolsPanel use mock d
 - **This app:** [docs/](docs/) — frontend-specific docs (e.g. [DOCKERHUB-PAGE.md](docs/DOCKERHUB-PAGE.md)); [docs/README.md](docs/README.md) indexes root docs.
 - **Architecture (contributors):** [docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md) — state philosophy, naming, store vs local state, store creation guidelines.
 - **UI/UX and implementation:** [docs/UI-UX-AND-IMPLEMENTATION.md](../docs/UI-UX-AND-IMPLEMENTATION.md).
+- **Configuration scenarios:** [docs/ENVIRONMENT.md](../docs/ENVIRONMENT.md#configuration-scenarios-olo-ui) — activate folders via **Administration → Scenarios**.

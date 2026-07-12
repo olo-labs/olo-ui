@@ -23,6 +23,8 @@ import type { AgentsCanvasActions, AgentsFileActions } from './agents/AgentsCont
 
 import { TenantConfigurationList } from './TenantConfigurationList'
 
+import { ConfigurationFolderList } from './ConfigurationFolderList'
+
 import { StudioCanvas } from './StudioCanvas'
 
 import type { Tenant } from '../types/tenant'
@@ -199,6 +201,14 @@ export function MainContent({
         />
 
       )
+
+    }
+
+
+
+    if (section.id === 'administration' && subId === 'scenarios') {
+
+      return <ConfigurationFolderList />
 
     }
 

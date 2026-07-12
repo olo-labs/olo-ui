@@ -117,6 +117,8 @@ export function useBuilderRunDialog(
       appendLog,
       setCancelling,
       setError,
+      setFinalResponse,
+      setRunning,
       stopRun,
     })
   }

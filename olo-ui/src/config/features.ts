@@ -32,6 +32,8 @@ export const features = {
 
   workflowConfiguration: true,
 
+  scenarioConfiguration: true,
+
   costAnalysis: false,
 
   replay: false,
@@ -61,6 +63,8 @@ export const FEATURE_FLAG_META: Partial<Record<FeatureId, { owner: string; remov
   tenantConfiguration: { owner: 'platform', removeBy: 'n/a (core)' },
 
   workflowConfiguration: { owner: 'platform', removeBy: 'n/a (core)' },
+
+  scenarioConfiguration: { owner: 'platform', removeBy: 'n/a (core)' },
 
   costAnalysis: { owner: 'TBD', removeBy: 'TBD' },
 

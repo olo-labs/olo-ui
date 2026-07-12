@@ -8,6 +8,7 @@ import { getHealth } from '../api/rest'
 import { useUIStore } from '../store/ui'
 import { tenantConfigStore } from '../store/tenantConfig'
 import { workflowConfigurationStore } from '../store/workflowConfigurationStore'
+import { configurationFolderStore } from '../store/configurationFolderStore'
 import { graphLogStore } from '../store/graphLogStore'
 import { catalogStore } from '../store/catalogStore'
 import { parsePath, parseQuery, DEFAULT_PATH, buildQuery, parsedToPanelParams } from '../routes'
@@ -76,6 +77,7 @@ export function useAppRouteSync() {
 
 export function useAppDataLoading(sectionId: SectionId | null, subId: string) {
   const isTenantAdmin = sectionId === 'administration' && subId === 'tenants'
+  const isScenarioAdmin = sectionId === 'administration' && subId === 'scenarios'
   const isWorkflowLog = sectionId === 'workflows' && subId === 'log'
   const needsCatalog =
     sectionId === 'workflows' && (subId === 'builder' || subId === 'agents' || subId === 'log')
@@ -90,6 +92,12 @@ export function useAppDataLoading(sectionId: SectionId | null, subId: string) {
       tenantConfigStore.getState().loadTenants()
     }
   }, [isTenantAdmin])
+
+  useEffect(() => {
+    if (isScenarioAdmin) {
+      configurationFolderStore.getState().loadFolders()
+    }
+  }, [isScenarioAdmin])
 
   useEffect(() => {
     if (needsCatalog && !catalogStore.getState().catalog && !catalogStore.getState().loading) {
@@ -109,7 +117,7 @@ export function useAppDataLoading(sectionId: SectionId | null, subId: string) {
     }
   }, [needsWorkflows, isWorkflowLog])
 
-  return { isTenantAdmin, isWorkflowLog }
+  return { isTenantAdmin, isWorkflowLog, isScenarioAdmin }
 }
 
 export function useAppNavigationLog(sectionId: SectionId | null, subId: string, runId: string) {

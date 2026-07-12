@@ -43,6 +43,18 @@ public class OloConfigurationProperties {
         return Paths.get(directory).toAbsolutePath().normalize();
     }
 
+    /**
+     * Parent of the active folder (e.g. {@code olo-configuration} when active is {@code current-active}).
+     */
+    public Path resolvedCatalogRoot() {
+        Path active = resolvedDirectory();
+        Path parent = active.getParent();
+        if (parent == null) {
+            throw new IllegalStateException("Configuration catalog root not found for: " + active);
+        }
+        return parent.toAbsolutePath().normalize();
+    }
+
     public Path resolvedLogDirectory() {
         if (logDirectory != null && !logDirectory.isBlank()) {
             return Paths.get(logDirectory).toAbsolutePath().normalize();

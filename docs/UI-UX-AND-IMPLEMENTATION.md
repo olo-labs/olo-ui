@@ -15,6 +15,24 @@ This document describes the current user interface, user experience, and technic
 
 The UI is a single-page application with a fixed top bar, an expandable left navigation (tenant + menu), an optional tools strip, a main content area, and an optional properties panel on the right.
 
+### Current navigation (implemented)
+
+Left panel sections (see `types/layout.ts`):
+
+| Section | Sub-options (available) | Notes |
+|---------|------------------------|-------|
+| **Workflows** | Agents, Log, Builder | Builder has canvas + run/cancel/refresh toolbar |
+| **Administration** | Tenants, **Scenarios** | Scenarios activates `olo-configuration` folders into `current-active` |
+| Overview, Executions, Observability, Extensions | — | Coming soon placeholders |
+
+**Key flows:**
+
+- **Administration → Scenarios** — list scenario folders (excluding `current-active`); **Activate** copies into `current-active` and refreshes worker + studio (`configurationFolderStore`, `POST /api/v1/configuration/folders/{id}/activate`).
+- **Workflows → Builder** — edit/run workflows; **Refresh stack** (`POST /api/v1/system/refresh`); **Cancel** on in-progress runs.
+- **Workflows → Agents** — import/export/reload workflow JSON from the active folder.
+
+Older sections below (Build / Run / Investigate / System) describe a prior layout and are kept for reference where not yet rewritten.
+
 ---
 
 ## 2. UI/UX Layout
@@ -126,6 +144,10 @@ The UI is a single-page application with a fixed top bar, an expandable left nav
 - **Tenants**: `GET /api/v1/tenants` — list (used for left-panel dropdown and for Tenant configuration list). Response: array of `{ id, name?, description?, configVersion? }`.
 - **Tenant CRUD**: `POST /api/v1/tenants` (create/upsert), `PUT /api/v1/tenants/:id` (update), `DELETE /api/v1/tenants/:id` (delete).
 - **Dropdown helpers**: `GET /api/v1/tenants/:tenantId/environments`, `GET /api/v1/tenants/:tenantId/environments/:env/runs`, `GET /api/v1/dropdown-details` (combined). Used for future dropdowns (e.g. Environment, Run ID).
+- **Configuration workflows**: `GET/PUT/DELETE /api/v1/configuration/workflows` — active folder (`current-active`).
+- **Scenario folders**: `GET /api/v1/configuration/folders`, `POST /api/v1/configuration/folders/{id}/activate`.
+- **Stack refresh**: `POST /api/v1/system/refresh` — worker Redis + olo runtime + studio reload hint.
+- **Run cancel** (olo backend): `POST /api/runs/{runId}/cancel` — proxied from builder/chat when runtime is connected.
 
 ### 4.3 Tenant data source (backend)
 
