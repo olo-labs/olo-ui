@@ -214,6 +214,19 @@ export function BuilderRunDialogContent({
 
         {run.error ? <p className="builder-run-error">{run.error}</p> : null}
 
+        {run.running ? (
+          <div className="builder-run-actions">
+            <button
+              type="button"
+              className="tenant-config-btn danger builder-run-cancel"
+              onClick={() => void run.handleCancel()}
+              disabled={run.cancelling}
+            >
+              {run.cancelling ? 'Cancelling…' : 'Cancel run'}
+            </button>
+          </div>
+        ) : null}
+
         <div className="builder-run-log-wrap">
           <div className="builder-run-log-label">Progress</div>
           <div ref={run.logRef} className="builder-run-log">
