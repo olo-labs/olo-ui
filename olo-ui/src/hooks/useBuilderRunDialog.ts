@@ -12,6 +12,7 @@ import { catalogStore } from '../store/catalogStore'
 import { workflowConfigurationStore } from '../store/workflowConfigurationStore'
 import { cancelBuilderRun, executeBuilderRun } from '../lib/builderRunExecution'
 import { useBuilderRunDialogSelection } from './useBuilderRunDialogSelection'
+import { useBuilderHumanInput } from './useBuilderHumanInput'
 
 export function useBuilderRunDialog(
   open: boolean,
@@ -29,6 +30,9 @@ export function useBuilderRunDialog(
   const [logLines, setLogLines] = useState<string[]>([])
   const [finalResponse, setFinalResponse] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [runEvents, setRunEvents] = useState<RunEventDto[]>([])
+  const [activeRunId, setActiveRunId] = useState<string | null>(null)
+  const [runStatus, setRunStatus] = useState<string | null>(null)
   const logRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<(() => void) | null>(null)
   const pollRef = useRef<number | null>(null)
@@ -61,6 +65,16 @@ export function useBuilderRunDialog(
     setLogLines((prev) => [...prev, line])
   }, [])
 
+  const humanInput = useBuilderHumanInput(
+    runEvents,
+    activeRunId,
+    open,
+    running,
+    runStatus,
+    setError,
+    appendLog,
+  )
+
   useEffect(() => {
     if (logRef.current) {
       logRef.current.scrollTop = logRef.current.scrollHeight
@@ -75,12 +89,28 @@ export function useBuilderRunDialog(
       setLogLines([])
       setFinalResponse('')
       setError(null)
+      setRunEvents([])
+      setActiveRunId(null)
+      setRunStatus(null)
       eventsRef.current = []
       activeRunIdRef.current = null
       return
     }
     return () => stopRun()
   }, [open, stopRun])
+
+  const executionCallbacks = {
+    appendLog,
+    setRunning,
+    setCancelling,
+    setError,
+    setFinalResponse,
+    setLogLines,
+    stopRun,
+    setRunEvents,
+    setActiveRunId,
+    setRunStatus,
+  }
 
   const handleRun = async (workflowLabel: string, messageOverride?: string) => {
     const content = (messageOverride ?? selection.prompt).trim()
@@ -98,29 +128,14 @@ export function useBuilderRunDialog(
         tenantId,
       },
       { abortRef, pollRef, eventsRef, activeRunIdRef },
-      {
-        appendLog,
-        setRunning,
-        setCancelling,
-        setError,
-        setFinalResponse,
-        setLogLines,
-        stopRun,
-      },
+      executionCallbacks,
     )
   }
 
   const handleCancel = async () => {
     const runId = activeRunIdRef.current
     if (!runId || !running || cancelling) return
-    await cancelBuilderRun(runId, { abortRef, pollRef, eventsRef, activeRunIdRef }, {
-      appendLog,
-      setCancelling,
-      setError,
-      setFinalResponse,
-      setRunning,
-      stopRun,
-    })
+    await cancelBuilderRun(runId, { abortRef, pollRef, eventsRef, activeRunIdRef }, executionCallbacks)
   }
 
   return {
@@ -136,6 +151,7 @@ export function useBuilderRunDialog(
     setPrompt: selection.setPrompt,
     running,
     cancelling,
+    runStatus,
     logLines,
     finalResponse,
     error,
@@ -145,5 +161,6 @@ export function useBuilderRunDialog(
     handleRun,
     handleCancel,
     queueWorkflows: selection.queueWorkflows,
+    humanInput,
   }
 }

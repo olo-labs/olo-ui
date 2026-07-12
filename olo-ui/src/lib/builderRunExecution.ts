@@ -10,7 +10,14 @@ import {
   streamRuntimeRunEvents,
   type RunEventDto,
 } from '../api/oloRuntime'
-import { fallbackResponseMessage, normalizeResponseText, pickResponseFromEvents } from './assistantResponse'
+import {
+  fallbackResponseMessage,
+  isDefinitiveWorkflowFinished,
+  isWorkflowFinished,
+  normalizeResponseText,
+  pickResponseFromEvents,
+} from './assistantResponse'
+import { findPendingHumanEvent } from './builderHumanStep'
 import { formatRunEventLogLine } from './runEventLog'
 import { resolveWorkflowReturnText } from './builderRunResponse'
 
@@ -29,10 +36,42 @@ export interface BuilderRunExecutionCallbacks {
   setFinalResponse: (response: string) => void
   setLogLines: (lines: string[]) => void
   stopRun: () => void
+  setRunEvents?: (events: RunEventDto[]) => void
+  setActiveRunId?: (runId: string | null) => void
+  setRunStatus?: (status: string | null) => void
 }
 
-function isTerminalRunStatus(status: string | undefined): boolean {
-  return status === 'completed' || status === 'failed' || status === 'cancelled'
+/** Milliseconds to wait after a Temporal checkpoint before treating completed+temporal as terminal. */
+const TEMPORAL_HUMAN_GRACE_MS = 8_000
+
+function isTemporalCheckpointEvent(event: RunEventDto): boolean {
+  if (event.nodeType?.toUpperCase() !== 'SYSTEM' || event.status?.toUpperCase() !== 'COMPLETED') {
+    return false
+  }
+  const output = event.output as Record<string, unknown> | undefined
+  return output?.source === 'temporal' && output?.status !== 'WORKFLOW_RESULT'
+}
+
+export function shouldFinishBuilderRun(
+  runId: string,
+  status: string | undefined,
+  events: RunEventDto[],
+  temporalCheckpointAt?: number | null,
+): boolean {
+  if (status === 'waiting_human' || status === 'running') return false
+  if (findPendingHumanEvent(events, runId)) return false
+  if (status === 'cancelled' || status === 'failed') return true
+  if (status === 'completed') {
+    if (isDefinitiveWorkflowFinished(events)) return true
+    if (isWorkflowFinished(events)) {
+      if (temporalCheckpointAt != null && Date.now() - temporalCheckpointAt < TEMPORAL_HUMAN_GRACE_MS) {
+        return false
+      }
+      return true
+    }
+    return false
+  }
+  return false
 }
 
 export async function executeBuilderRun(
@@ -55,16 +94,30 @@ export async function executeBuilderRun(
   callbacks: BuilderRunExecutionCallbacks,
 ): Promise<void> {
   const { abortRef, pollRef, eventsRef, activeRunIdRef } = refs
-  const { appendLog, setRunning, setCancelling, setError, setFinalResponse, setLogLines, stopRun } = callbacks
+  const {
+    appendLog,
+    setRunning,
+    setCancelling,
+    setError,
+    setFinalResponse,
+    setLogLines,
+    stopRun,
+    setRunEvents,
+    setActiveRunId,
+    setRunStatus,
+  } = callbacks
 
   stopRun()
   activeRunIdRef.current = null
+  setActiveRunId?.(null)
+  setRunStatus?.(null)
   setCancelling(false)
   setRunning(true)
   setError(null)
   setLogLines([])
   setFinalResponse('')
   eventsRef.current = []
+  setRunEvents?.([])
   appendLog(`Starting workflow "${workflowLabel}" (queue: ${taskQueue}, type: ${workflowType})…`)
 
   try {
@@ -78,13 +131,21 @@ export async function executeBuilderRun(
 
     const { runId } = await sendRuntimeMessage(sessionId, content, { taskQueue })
     activeRunIdRef.current = runId
+    setActiveRunId?.(runId)
     appendLog(`Run ${runId} started`)
+
+    let temporalCheckpointAt: number | null = null
 
     abortRef.current = streamRuntimeRunEvents(
       runId,
       (event) => {
-        eventsRef.current = [...eventsRef.current, event]
-        appendLog(formatRunEventLogLine(event))
+        const normalized = event.runId?.trim() ? event : { ...event, runId }
+        if (isTemporalCheckpointEvent(normalized)) {
+          temporalCheckpointAt = Date.now()
+        }
+        eventsRef.current = [...eventsRef.current, normalized]
+        setRunEvents?.(eventsRef.current)
+        appendLog(formatRunEventLogLine(normalized))
         const preview = normalizeResponseText(pickResponseFromEvents(eventsRef.current))
         if (preview) setFinalResponse(preview)
       },
@@ -98,7 +159,9 @@ export async function executeBuilderRun(
     pollRef.current = window.setInterval(() => {
       void (async () => {
         const run = await getRuntimeRun(runId)
-        if (!run || !isTerminalRunStatus(run.status)) return
+        if (run?.status) setRunStatus?.(run.status)
+        if (!run || !shouldFinishBuilderRun(runId, run.status, eventsRef.current, temporalCheckpointAt)) return
+        if (findPendingHumanEvent(eventsRef.current, runId)) return
         if (pollRef.current != null) {
           window.clearInterval(pollRef.current)
           pollRef.current = null
@@ -106,6 +169,8 @@ export async function executeBuilderRun(
         await new Promise((resolve) => window.setTimeout(resolve, 800))
         stopRun()
         activeRunIdRef.current = null
+        setActiveRunId?.(null)
+        setRunStatus?.(null)
         setCancelling(false)
         if (run.status === 'cancelled') {
           setFinalResponse('Run cancelled.')
@@ -124,6 +189,8 @@ export async function executeBuilderRun(
     setError(message)
     appendLog(`ERROR: ${message}`)
     activeRunIdRef.current = null
+    setActiveRunId?.(null)
+    setRunStatus?.(null)
     setCancelling(false)
     setRunning(false)
   }
@@ -134,7 +201,7 @@ export async function cancelBuilderRun(
   refs: BuilderRunExecutionRefs,
   callbacks: Pick<
     BuilderRunExecutionCallbacks,
-    'appendLog' | 'setCancelling' | 'setError' | 'setFinalResponse' | 'setRunning' | 'stopRun'
+    'appendLog' | 'setCancelling' | 'setError' | 'setFinalResponse' | 'setRunning' | 'stopRun' | 'setActiveRunId' | 'setRunStatus'
   >,
 ): Promise<void> {
   const { activeRunIdRef } = refs
@@ -166,14 +233,17 @@ function finishBuilderRun(
   refs: BuilderRunExecutionRefs,
   callbacks: Pick<
     BuilderRunExecutionCallbacks,
-    'appendLog' | 'setCancelling' | 'setFinalResponse' | 'setRunning' | 'stopRun'
+    'appendLog' | 'setCancelling' | 'setFinalResponse' | 'setRunning' | 'stopRun' | 'setActiveRunId' | 'setRunStatus'
   >,
   options?: { response?: string; logLine?: string },
 ): void {
   const { activeRunIdRef } = refs
-  const { appendLog, setCancelling, setFinalResponse, setRunning, stopRun } = callbacks
+  const { appendLog, setCancelling, setFinalResponse, setRunning, stopRun, setActiveRunId, setRunStatus } =
+    callbacks
   stopRun()
   activeRunIdRef.current = null
+  setActiveRunId?.(null)
+  setRunStatus?.(null)
   setCancelling(false)
   setRunning(false)
   if (options?.response) setFinalResponse(options.response)

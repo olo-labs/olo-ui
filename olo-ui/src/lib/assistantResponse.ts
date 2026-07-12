@@ -97,8 +97,47 @@ export function pickResponseFromEvents(events: RunEventDto[]): string | null {
   return null
 }
 
+/** True when the run was cancelled by the user. */
+export function isWorkflowCancelled(events: RunEventDto[]): boolean {
+  return events.some((e) => {
+    if (e.nodeType?.toUpperCase() !== 'SYSTEM' || e.status?.toUpperCase() !== 'FAILED') return false
+    const output = e.output as Record<string, unknown> | undefined
+    return output?.status === 'CANCELLED'
+  })
+}
+
+function isTerminalSystemCompletedEvent(event: RunEventDto): boolean {
+  if (event.nodeType?.toUpperCase() !== 'SYSTEM' || event.status?.toUpperCase() !== 'COMPLETED') {
+    return false
+  }
+  const output = event.output as Record<string, unknown> | undefined
+  const metadata = event.metadata as Record<string, unknown> | undefined
+  return (
+    output?.status === 'WORKFLOW_RESULT' ||
+    metadata?.phase === 'kernel-result' ||
+    output?.source === 'temporal'
+  )
+}
+
 /** True when the run has a final workflow result or terminal failure (not CONTEXT_READY alone). */
 export function isWorkflowFinished(events: RunEventDto[]): boolean {
+  if (isWorkflowCancelled(events)) return true
+  if (
+    events.some(
+      (e) => e.nodeType?.toUpperCase() === 'SYSTEM' && e.status?.toUpperCase() === 'FAILED',
+    )
+  ) {
+    return true
+  }
+  return events.some(isTerminalSystemCompletedEvent)
+}
+
+/**
+ * True when the workflow reached a final kernel result — not a mid-run Temporal checkpoint
+ * that may precede a human-input step.
+ */
+export function isDefinitiveWorkflowFinished(events: RunEventDto[]): boolean {
+  if (isWorkflowCancelled(events)) return true
   if (
     events.some(
       (e) => e.nodeType?.toUpperCase() === 'SYSTEM' && e.status?.toUpperCase() === 'FAILED',
@@ -112,11 +151,7 @@ export function isWorkflowFinished(events: RunEventDto[]): boolean {
     }
     const output = e.output as Record<string, unknown> | undefined
     const metadata = e.metadata as Record<string, unknown> | undefined
-    return (
-      output?.status === 'WORKFLOW_RESULT' ||
-      metadata?.phase === 'kernel-result' ||
-      output?.source === 'temporal'
-    )
+    return output?.status === 'WORKFLOW_RESULT' || metadata?.phase === 'kernel-result'
   })
 }
 
@@ -145,4 +180,17 @@ export function fallbackResponseMessage(runStatus: string | undefined): string {
     return 'The workflow failed before a response could be generated. Check the progress log and olo-worker logs.'
   }
   return EMPTY_RESPONSE_MESSAGE
+}
+
+/** True when GET /runs/{id} status means the workflow actually finished (not CONTEXT_READY or human wait). */
+export function isRunTerminalFromApi(
+  runStatus: string | undefined,
+  events: RunEventDto[],
+): boolean {
+  if (!runStatus) return false
+  if (runStatus === 'cancelled') return true
+  if (runStatus === 'failed') return true
+  if (runStatus === 'waiting_human' || runStatus === 'running') return false
+  if (runStatus === 'completed') return isWorkflowFinished(events)
+  return false
 }

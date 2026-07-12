@@ -1,63 +1,45 @@
-/*
+/**
  * Copyright (c) 2026 Olo Labs
  * SPDX-License-Identifier: Apache-2.0
  */
 import { describe, expect, it } from 'vitest'
-import {
-  EMPTY_RESPONSE_MESSAGE,
-  extractAssistantText,
-  fallbackResponseMessage,
-  normalizeResponseText,
-  pickResponseFromEvents,
-} from './assistantResponse'
 import type { RunEventDto } from '../api/oloRuntime'
+import { isDefinitiveWorkflowFinished, isWorkflowFinished } from './assistantResponse'
 
-describe('extractAssistantText', () => {
-  it('reads workflow response and returnValue', () => {
-    expect(extractAssistantText({ response: 'hello' })).toBe('hello')
-    expect(extractAssistantText({ returnValue: 42 })).toBe('42')
+function temporalCheckpoint(runId: string): RunEventDto {
+  return {
+    runId,
+    nodeId: 'root',
+    nodeType: 'SYSTEM',
+    status: 'COMPLETED',
+    sequenceNumber: 99,
+    timestamp: 99,
+    output: { source: 'temporal', response: 'partial' },
+  }
+}
+
+function workflowResult(runId: string): RunEventDto {
+  return {
+    runId,
+    nodeId: 'root',
+    nodeType: 'SYSTEM',
+    status: 'COMPLETED',
+    sequenceNumber: 200,
+    timestamp: 200,
+    output: { status: 'WORKFLOW_RESULT', response: 'done' },
+  }
+}
+
+describe('workflow finished detection', () => {
+  it('treats temporal checkpoint as finished for preview paths', () => {
+    expect(isWorkflowFinished([temporalCheckpoint('run-1')])).toBe(true)
   })
 
-  it('ignores metadata-only temporal output', () => {
-    expect(extractAssistantText({ source: 'temporal' })).toBeNull()
+  it('does not treat temporal checkpoint alone as definitive completion', () => {
+    expect(isDefinitiveWorkflowFinished([temporalCheckpoint('run-1')])).toBe(false)
   })
-})
 
-describe('pickResponseFromEvents', () => {
-  it('prefers WORKFLOW_RESULT over later empty temporal SYSTEM event', () => {
-    const events: RunEventDto[] = [
-      {
-        runId: 'r1',
-        nodeId: 'kernel',
-        nodeType: 'SYSTEM',
-        status: 'COMPLETED',
-        timestamp: 1,
-        output: { status: 'WORKFLOW_RESULT', response: 'workflow answer' },
-        metadata: { phase: 'kernel-result' },
-      },
-      {
-        runId: 'r1',
-        nodeId: 'root',
-        nodeType: 'SYSTEM',
-        status: 'COMPLETED',
-        timestamp: 2,
-        output: { source: 'temporal' },
-      },
-    ]
-    expect(pickResponseFromEvents(events)).toBe('workflow answer')
-  })
-})
-
-describe('normalizeResponseText', () => {
-  it('returns null for empty text', () => {
-    expect(normalizeResponseText('')).toBeNull()
-    expect(normalizeResponseText('  answer  ')).toBe('answer')
-  })
-})
-
-describe('fallbackResponseMessage', () => {
-  it('uses different copy for failed runs', () => {
-    expect(fallbackResponseMessage('completed')).toBe(EMPTY_RESPONSE_MESSAGE)
-    expect(fallbackResponseMessage('failed')).toContain('failed')
+  it('treats WORKFLOW_RESULT as definitive completion', () => {
+    expect(isDefinitiveWorkflowFinished([workflowResult('run-1')])).toBe(true)
   })
 })

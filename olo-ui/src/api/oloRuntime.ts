@@ -14,9 +14,16 @@ export interface RunEventDto {
   status: string
   eventType?: string
   timestamp: number
+  sequenceNumber?: number
   input?: Record<string, unknown>
   output?: Record<string, unknown>
   metadata?: Record<string, unknown>
+}
+
+export interface HumanInputRequestDto {
+  approved: boolean
+  message?: string
+  historyText?: string
 }
 
 export async function checkOloRuntimeHealth(): Promise<void> {
@@ -72,6 +79,24 @@ export async function cancelRuntimeRun(runId: string): Promise<void> {
   if (res.status === 404) throw new Error('Run not found')
   if (res.status === 409) throw new Error('Run is no longer in progress')
   if (!res.ok) throw new Error(`Cancel run failed: HTTP ${res.status}`)
+}
+
+export async function submitRuntimeHumanInput(
+  runId: string,
+  body: HumanInputRequestDto,
+): Promise<void> {
+  const res = await fetch(`${API}/runs/${encodeURIComponent(runId)}/human-input`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      approved: !!body.approved,
+      message: body.message ?? '',
+      ...(body.historyText != null && body.historyText !== ''
+        ? { historyText: body.historyText }
+        : {}),
+    }),
+  })
+  if (!res.ok) throw new Error(`Human input failed: HTTP ${res.status}`)
 }
 
 export async function getRuntimeRunResponse(runId: string): Promise<string> {

@@ -7,6 +7,7 @@ import { catalogQueues, catalogWorkflowTypes } from '../../lib/temporalCatalog'
 import { catalogStore } from '../../store/catalogStore'
 import { workflowConfigurationStore } from '../../store/workflowConfigurationStore'
 import type { useBuilderRunDialog } from '../../hooks/useBuilderRunDialog'
+import { BuilderHumanInputCard } from './BuilderHumanInputCard'
 
 type RunState = ReturnType<typeof useBuilderRunDialog>
 
@@ -38,6 +39,9 @@ export function BuilderRunDialogContent({
     !workflowId ||
     !run.prompt.trim()
 
+  const showHumanInput = !!run.humanInput.pendingHumanEvent
+  const showRunSetup = !showHumanInput
+
   return (
     <>
       <div className="builder-run-backdrop" onClick={run.running ? undefined : onClose} aria-hidden />
@@ -57,6 +61,24 @@ export function BuilderRunDialogContent({
           </button>
         </div>
 
+        {showHumanInput ? (
+          <BuilderHumanInputCard
+            humanPromptMessage={run.humanInput.humanPromptMessage}
+            humanStepFooterActions={run.humanInput.humanStepFooterActions}
+            humanStepParameters={run.humanInput.humanStepParameters}
+            humanPluginName={run.humanInput.humanPluginName}
+            humanTaskId={run.humanInput.humanTaskId}
+            usesPluginForm={run.humanInput.usesPluginForm}
+            humanFieldValues={run.humanInput.humanFieldValues}
+            setHumanFieldValue={run.humanInput.setHumanFieldValue}
+            pluginFormValid={run.humanInput.pluginFormValid}
+            submittingHumanInput={run.humanInput.submittingHumanInput}
+            onSubmit={run.humanInput.handleSubmitHumanInput}
+          />
+        ) : null}
+
+        {showRunSetup ? (
+          <>
         {catalogError ? (
           <p className="builder-run-error">{catalogError}</p>
         ) : workflowsError ? (
@@ -187,6 +209,9 @@ export function BuilderRunDialogContent({
           </button>
         </div>
 
+          </>
+        ) : null}
+
         {run.error ? <p className="builder-run-error">{run.error}</p> : null}
 
         <div className="builder-run-log-wrap">
@@ -207,7 +232,12 @@ export function BuilderRunDialogContent({
         <div className="builder-run-response-wrap">
           <div className="builder-run-log-label">Final response</div>
           <div className="builder-run-response">
-            {run.finalResponse || (run.running ? 'Waiting for completion…' : '—')}
+            {run.finalResponse ||
+              (run.humanInput.pendingHumanEvent
+                ? 'Waiting for your input…'
+                : run.running
+                  ? 'Waiting for completion…'
+                  : '—')}
           </div>
         </div>
       </div>

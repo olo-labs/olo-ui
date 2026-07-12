@@ -257,7 +257,7 @@
   left: 50%;
   transform: translate(-50%, -50%);
   width: min(32rem, calc(100vw - 2rem));
-  max-height: min(36rem, calc(100vh - 2rem));
+  max-height: min(42rem, calc(100vh - 2rem));
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
@@ -266,6 +266,7 @@
   border-radius: 10px;
   background: #18181b;
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  overflow-y: auto;
 }
 
 .builder-run-header {
@@ -451,6 +452,121 @@
   font-size: 0.82rem;
   line-height: 1.5;
   white-space: pre-wrap;
+}
+
+.builder-run-human-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.85rem 0.9rem;
+  border: 1px solid #f59e0b;
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.08);
+  flex-shrink: 0;
+}
+
+.builder-run-human-banner {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fbbf24;
+}
+
+.builder-run-human-step-line {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: #f5f5f5;
+  white-space: pre-wrap;
+}
+
+.builder-run-human-prompt {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: #f4f4f5;
+}
+
+.builder-run-human-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.builder-run-human-fieldset {
+  margin: 0;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid #27272a;
+  border-radius: 6px;
+}
+
+.builder-run-human-fieldset legend {
+  padding: 0 0.25rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #a1a1aa;
+}
+
+.builder-run-human-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.45rem;
+}
+
+.builder-run-human-textarea {
+  min-height: 4rem;
+}
+
+.builder-run-human-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.82rem;
+}
+
+.builder-run-human-approval-toggle {
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
+.builder-run-human-toggle-btn {
+  min-width: 3rem;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid #52525b;
+  border-radius: 6px;
+  background: #18181b;
+  color: #e4e4e7;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.builder-run-human-toggle-btn:hover:not(:disabled) {
+  border-color: #71717a;
+  background: #27272a;
+}
+
+.builder-run-human-toggle-btn.active {
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.15);
+  color: #fafafa;
+}
+
+.builder-run-human-toggle-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.builder-run-human-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.builder-run-human-btn {
+  font-size: 0.78rem;
 }
 
 .workflow-canvas-toolbar-error {
