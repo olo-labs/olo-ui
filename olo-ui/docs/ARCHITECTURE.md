@@ -1,3 +1,7 @@
+<!--
+Copyright (c) 2026 Olo Labs
+SPDX-License-Identifier: Apache-2.0
+-->
 # Olo UI — Architecture
 
 This document describes how **olo-ui** (the React frontend) is structured, how it talks to **olo-be** (the Spring Boot API), and how it integrates with **olo-core** catalog and **olo-configuration** workflow presets.

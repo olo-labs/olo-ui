@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 import ESM_COMPAT_Module from "node:module";
 import { fileURLToPath as ESM_COMPAT_fileURLToPath } from 'node:url';
 import { dirname as ESM_COMPAT_dirname } from 'node:path';

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 import { useMemo } from 'react'
 import type { Permission, Role } from './types'
 import { ROLE_PERMISSIONS } from './types'

@@ -1,160 +1,49 @@
-import type { CatalogComponentBase, StudioCatalog } from '../types/catalog'
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
+import type { StudioCatalog } from '../types/catalog'
 import type { WorkflowPort } from '../types/workflow'
+import {
+  AGENT_HOST_PORTS,
+  AGENT_PLUGIN_PORTS,
+  CAPABILITY_PLUGIN_PORTS,
+  CAPABILITIES_PORT_ID,
+  AGENT_PLUG_PORT_ID,
+  MESSAGE_IN_PORT_ID,
+  MESSAGE_OUT_PORT_ID,
+  PLANNER_ROUTED_MESSAGE_PORTS,
+  type PortSide,
+} from './workflowNodePortConstants'
+import {
+  catalogComponentToPorts,
+  mergeMissingCatalogPorts,
+  syncCanonicalPortLayout,
+} from './workflowNodePortMapping'
 
-export const MESSAGE_WIRE = 'message'
-export const CAPABILITIES_WIRE = 'capabilities'
-export const AGENT_PLUG_WIRE = 'agent-plug'
+export {
+  MESSAGE_WIRE,
+  CAPABILITIES_WIRE,
+  AGENT_PLUG_WIRE,
+  CAPABILITIES_PORT_ID,
+  AGENT_PLUG_PORT_ID,
+  MESSAGE_PORT_COLOR,
+  CAPABILITIES_PORT_COLOR,
+  AGENT_PLUG_PORT_COLOR,
+  PLANNER_ROUTED_MESSAGE_PORT_COLOR,
+  MESSAGE_IN_PORT_ID,
+  MESSAGE_OUT_PORT_ID,
+  AGENT_HOST_PORTS,
+  PLANNER_ROUTED_MESSAGE_PORTS,
+  CAPABILITY_PLUGIN_PORTS,
+  AGENT_PLUGIN_PORTS,
+  type CanvasPortProfileName,
+  type PortSide,
+} from './workflowNodePortConstants'
+export { catalogComponentToPorts, mergeMissingCatalogPorts } from './workflowNodePortMapping'
 
-export const CAPABILITIES_PORT_ID = 'capabilities'
-export const AGENT_PLUG_PORT_ID = 'agentPlug'
-
-export const MESSAGE_PORT_COLOR = '#ef4444'
-export const CAPABILITIES_PORT_COLOR = '#22c55e'
-export const AGENT_PLUG_PORT_COLOR = '#a855f7'
-/** Message ports on plugin nodes — wired by the planner/agent at runtime, not on the canvas. */
-export const PLANNER_ROUTED_MESSAGE_PORT_COLOR = '#71717a'
-
-export const MESSAGE_IN_PORT_ID = 'in'
-export const MESSAGE_OUT_PORT_ID = 'out'
-
-/** Canonical AGENT host ports — mirrors WorkflowBuilder.agentNode() / agent.json presets. */
-export const AGENT_HOST_PORTS: WorkflowPort[] = [
-  {
-    id: 'in',
-    label: 'message in',
-    schema: 'message',
-    type: 'message',
-    acceptType: 'message',
-    direction: 'INPUT',
-    required: true,
-    minConnections: 1,
-    maxConnections: 1,
-    shortDescription: 'Incoming workflow message',
-    ui: { position: 'LEFT', color: MESSAGE_PORT_COLOR },
-  },
-  {
-    id: CAPABILITIES_PORT_ID,
-    label: 'available tools',
-    schema: CAPABILITIES_WIRE,
-    type: CAPABILITIES_WIRE,
-    acceptType: CAPABILITIES_WIRE,
-    direction: 'INPUT',
-    required: false,
-    minConnections: 0,
-    shortDescription: 'Tools and hooks registered for runtime prompt assembly (0 or more)',
-    ui: { position: 'BOTTOM', color: CAPABILITIES_PORT_COLOR },
-  },
-  {
-    id: AGENT_PLUG_PORT_ID,
-    label: 'available agents',
-    schema: AGENT_PLUG_WIRE,
-    type: AGENT_PLUG_WIRE,
-    acceptType: AGENT_PLUG_WIRE,
-    direction: 'INPUT',
-    required: false,
-    minConnections: 0,
-    shortDescription: 'Child workflows registered for runtime prompt assembly (0 or more)',
-    ui: { position: 'BOTTOM', color: AGENT_PLUG_PORT_COLOR },
-  },
-  {
-    id: 'out',
-    label: 'message out',
-    schema: 'message',
-    type: 'message',
-    direction: 'OUTPUT',
-    required: false,
-    minConnections: 0,
-    shortDescription: 'Outgoing workflow message',
-    ui: { position: 'RIGHT', color: MESSAGE_PORT_COLOR },
-  },
-]
-
-/** Grayed message in/out on plugin nodes — shown for context, wired by planner at runtime. */
-export const PLANNER_ROUTED_MESSAGE_PORTS: WorkflowPort[] = [
-  {
-    id: MESSAGE_IN_PORT_ID,
-    label: 'message in',
-    schema: MESSAGE_WIRE,
-    type: MESSAGE_WIRE,
-    acceptType: MESSAGE_WIRE,
-    direction: 'INPUT',
-    required: false,
-    minConnections: 0,
-    shortDescription: 'Incoming message (routed by planner/agent at runtime)',
-    ui: { position: 'LEFT', color: PLANNER_ROUTED_MESSAGE_PORT_COLOR },
-  },
-  {
-    id: MESSAGE_OUT_PORT_ID,
-    label: 'message out',
-    schema: MESSAGE_WIRE,
-    type: MESSAGE_WIRE,
-    direction: 'OUTPUT',
-    required: false,
-    minConnections: 0,
-    shortDescription: 'Outgoing message (routed by planner/agent at runtime)',
-    ui: { position: 'RIGHT', color: PLANNER_ROUTED_MESSAGE_PORT_COLOR },
-  },
-]
-
-/** Plugin output on tool/hook canvas nodes — top boundary indicator for agent prompt assembly. */
-export const CAPABILITY_PLUGIN_PORTS: WorkflowPort[] = [
-  {
-    id: CAPABILITIES_PORT_ID,
-    label: 'available tools',
-    schema: CAPABILITIES_WIRE,
-    type: CAPABILITIES_WIRE,
-    direction: 'OUTPUT',
-    required: false,
-    minConnections: 0,
-    shortDescription: 'Capability indicator for runtime prompt assembly on a connected agent',
-    ui: { position: 'TOP', color: CAPABILITIES_PORT_COLOR },
-  },
-]
-
-/** Plugin output on delegate child-workflow nodes — top boundary indicator for agent prompt assembly. */
-export const AGENT_PLUGIN_PORTS: WorkflowPort[] = [
-  {
-    id: AGENT_PLUG_PORT_ID,
-    label: 'available agents',
-    schema: AGENT_PLUG_WIRE,
-    type: AGENT_PLUG_WIRE,
-    direction: 'OUTPUT',
-    required: false,
-    minConnections: 0,
-    shortDescription: 'Child workflow indicator for runtime prompt assembly on a connected agent',
-    ui: { position: 'TOP', color: AGENT_PLUG_PORT_COLOR },
-  },
-]
-
-export type CanvasPortProfileName = 'CAPABILITY_PLUGIN' | 'AGENT_PLUGIN' | 'PLANNER_HOST'
-
-/** Map catalog port descriptors to workflow ports (annotation export only — no UI fallbacks). */
-export function catalogComponentToPorts(item: CatalogComponentBase): WorkflowPort[] {
-  const ports: WorkflowPort[] = []
-  for (const input of item.inputs ?? []) {
-    ports.push(mapCatalogPort(input, 'INPUT'))
-  }
-  for (const output of item.outputs ?? []) {
-    ports.push(mapCatalogPort(output, 'OUTPUT'))
-  }
-  return ports
-}
-
-/** Merge catalog ports missing from persisted workflow JSON (annotation is source of truth). */
-export function mergeMissingCatalogPorts(
-  workflowPorts: WorkflowPort[] | undefined,
-  catalogPorts: WorkflowPort[],
-): WorkflowPort[] {
-  const ports = [...(workflowPorts ?? [])]
-  const portIds = new Set(ports.map((port) => `${port.direction}:${port.id}`))
-  for (const catalogPort of catalogPorts) {
-    const key = `${catalogPort.direction}:${catalogPort.id}`
-    if (!portIds.has(key)) {
-      ports.push(catalogPort)
-      portIds.add(key)
-    }
-  }
-  return ports
+function syncAgentHostPortLayout(ports: WorkflowPort[]): WorkflowPort[] {
+  return syncCanonicalPortLayout(ports, AGENT_HOST_PORTS)
 }
 
 /** Ensure AGENT nodes expose annotation-defined plugin inputs when workflow JSON is stale. */
@@ -169,39 +58,6 @@ export function resolveAgentHostPorts(
   const merged = mergeMissingCatalogPorts(workflowPorts, catalogPorts)
   const withDefaults = mergeMissingCatalogPorts(merged, AGENT_HOST_PORTS)
   return syncAgentHostPortLayout(withDefaults)
-}
-
-function syncCanonicalPortLayout(
-  ports: WorkflowPort[],
-  canonicalPorts: WorkflowPort[],
-): WorkflowPort[] {
-  const canonical = new Map(
-    canonicalPorts.map((port) => [`${port.direction}:${port.id}`, port]),
-  )
-  return ports.map((port) => {
-    const reference = canonical.get(`${port.direction}:${port.id}`)
-    if (!reference) return port
-    return {
-      ...port,
-      label: reference.label,
-      schema: reference.schema,
-      type: reference.type,
-      acceptType: reference.acceptType,
-      required: reference.required,
-      minConnections: reference.minConnections,
-      maxConnections: reference.maxConnections,
-      shortDescription: reference.shortDescription ?? port.shortDescription,
-      ui: {
-        ...port.ui,
-        position: reference.ui?.position,
-        color: reference.ui?.color ?? port.ui?.color,
-      },
-    }
-  })
-}
-
-function syncAgentHostPortLayout(ports: WorkflowPort[]): WorkflowPort[] {
-  return syncCanonicalPortLayout(ports, AGENT_HOST_PORTS)
 }
 
 export function isDelegateAgentNode(configuration?: Record<string, unknown> | null): boolean {
@@ -278,46 +134,6 @@ export function resolveNodePorts(
   }
   return workflowPorts ?? []
 }
-
-function mapCatalogPort(
-  port: NonNullable<CatalogComponentBase['inputs']>[number],
-  direction: 'INPUT' | 'OUTPUT',
-): WorkflowPort {
-  const wireType = port.type ?? port.schema ?? 'any'
-  const wireColor = portColorForWire(wireType)
-  return {
-    id: port.id,
-    label: port.label ?? port.name ?? port.id,
-    name: port.name ?? port.id,
-    shortDescription: port.shortDescription ?? port.description,
-    schema: port.schema ?? 'any',
-    type: wireType,
-    acceptType: port.acceptType ?? (direction === 'INPUT' ? port.type ?? port.schema : undefined),
-    direction,
-    required: port.required,
-    minConnections: port.minConnections,
-    maxConnections: port.maxConnections,
-    ui: {
-      position: port.ui?.position ?? (direction === 'INPUT' ? 'LEFT' : 'RIGHT'),
-      color: port.ui?.color ?? wireColor,
-    },
-  }
-}
-
-function portColorForWire(wireType: string): string | undefined {
-  switch (wireType.trim().toLowerCase()) {
-    case MESSAGE_WIRE:
-      return MESSAGE_PORT_COLOR
-    case CAPABILITIES_WIRE:
-      return CAPABILITIES_PORT_COLOR
-    case AGENT_PLUG_WIRE:
-      return AGENT_PLUG_PORT_COLOR
-    default:
-      return undefined
-  }
-}
-
-export type PortSide = 'LEFT' | 'RIGHT' | 'TOP' | 'BOTTOM'
 
 export function resolvePortSide(port: WorkflowPort): PortSide {
   const position = port.ui?.position?.toUpperCase()

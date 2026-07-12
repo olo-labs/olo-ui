@@ -1,3 +1,7 @@
+<!--
+Copyright (c) 2026 Olo Labs
+SPDX-License-Identifier: Apache-2.0
+-->
 # Docker Hub repository description
 
 Copy-paste the text below into your Docker Hub repository **Description** (and **Short description**) so users know how to pull and run the image.

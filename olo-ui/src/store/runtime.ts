@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /**
  * Runtime domain store: live runs, queues, metrics, run-level view state.
  * One store per domain — do not split by component (e.g. no liveRunsStore, metricsStore).

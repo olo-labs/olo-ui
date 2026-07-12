@@ -1,3 +1,7 @@
+<!--
+Copyright (c) 2026 Olo Labs
+SPDX-License-Identifier: Apache-2.0
+-->
 # Olo — Contributor Architecture Guide
 
 This document is for contributors. It explains how the codebase is structured so you can add features without fighting the architecture.

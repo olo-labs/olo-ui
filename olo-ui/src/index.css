@@ -16,3 +16,4 @@
 @import './styles/states.css';
 @import './styles/coming-soon.css';
 @import './styles/theme.css';
+@import '@xyflow/react/dist/style.css';

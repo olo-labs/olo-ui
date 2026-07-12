@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 import{r as i}from"./index-Bc2G9s8g.js";var f={exports:{}},n={};/**
  * @license React
  * react-jsx-runtime.production.min.js

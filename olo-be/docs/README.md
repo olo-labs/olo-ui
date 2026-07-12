@@ -1,3 +1,7 @@
+<!--
+Copyright (c) 2026 Olo Labs
+SPDX-License-Identifier: Apache-2.0
+-->
 # olo-be docs
 
 Backend-specific documentation. For run and build instructions, see [olo-be/README.md](../README.md).

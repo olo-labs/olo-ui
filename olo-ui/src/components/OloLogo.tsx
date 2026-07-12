@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /**
  * Olo logo: transparent SVG symbol (two overlapping circles + vertical line).
  * Uses currentColor so it adapts to theme (light on dark, dark on light).

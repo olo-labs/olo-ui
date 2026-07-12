@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /**
  * Contextual tools panel: shows tools for the current view (section + sub-option).
  * Tools array per sub-option; tool registry map; tool components receive only owning-store context.

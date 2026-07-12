@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 import type { CatalogTemporalQueue, CatalogWorkflowType, StudioCatalog } from '../types/catalog'
 import type { WorkflowSummary } from '../types/workflow'
 

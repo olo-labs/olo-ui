@@ -21,7 +21,9 @@
 .workflow-canvas {
   position: relative;
   flex: 1;
-  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   height: 100%;
   border-top: 1px solid var(--border, #27272a);
 }
@@ -391,6 +393,10 @@
   font-size: 0.78rem;
 }
 
+.builder-run-cancel {
+  align-self: flex-start;
+}
+
 .builder-run-error {
   margin: 0;
   font-size: 0.78rem;
@@ -469,8 +475,9 @@
 }
 
 .workflow-canvas .react-flow {
+  flex: 1;
+  min-height: 0;
   width: 100%;
-  height: 100%;
   background: #09090b;
 }
 

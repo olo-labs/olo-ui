@@ -77,7 +77,15 @@
 .agents-canvas-flow {
   position: relative;
   flex: 1;
-  min-height: 320px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.agents-canvas-flow .react-flow {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
 }
 
 .agents-canvas-message {

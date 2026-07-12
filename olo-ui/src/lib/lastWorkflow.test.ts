@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 import { describe, expect, it, beforeEach } from 'vitest'
 import { getLastWorkflowFileName, setLastWorkflowFileName } from './lastWorkflow'
 

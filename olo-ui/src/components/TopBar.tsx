@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useUIStore } from '../store/ui'
 import { DEFAULT_PATH, buildPathWithQuery, parseQuery, parsedToPanelParams } from '../routes'

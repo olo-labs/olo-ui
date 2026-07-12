@@ -1,13 +1,18 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 import { useEffect, useState } from 'react'
-import {
-  type SectionConfig,
-  type SectionId,
-  getSectionDefaultSubId,
-  sectionIsComingSoon,
-  subOptionIsComingSoon,
-} from '../types/layout'
+import { type SectionId } from '../types/layout'
 import { useVisibleSections } from '../hooks/useFeature'
-import { isFeatureEnabled } from '../config/features'
+import {
+  LeftPanelCategory,
+  handleLeftPanelSectionClick,
+} from './LeftPanelCategory'
+import {
+  LeftPanelMenuContextMenu,
+  type MenuContextMenu,
+} from './LeftPanelMenuContextMenu'
 
 export interface LeftPanelProps {
   expanded: boolean
@@ -16,8 +21,6 @@ export interface LeftPanelProps {
   subId: string
   onSectionSubSelect: (sectionId: SectionId, subId: string) => void
 }
-
-type MenuContextMenu = { x: number; y: number; targetSectionId: SectionId | null }
 
 export function LeftPanel({
   expanded,
@@ -67,24 +70,6 @@ export function LeftPanel({
     if (!expanded) return
     setMenuContext({ x: e.clientX, y: e.clientY, targetSectionId })
   }
-  const closeMenuContext = () => setMenuContext(null)
-
-  const getSubOptions = (section: SectionConfig) =>
-    section.subOptions.filter(
-      (sub) => !sub.featureId || isFeatureEnabled(sub.featureId as import('../config/features').FeatureId),
-    )
-
-  const handleSectionClick = (section: SectionConfig) => {
-    const subs = getSubOptions(section)
-    if (subs.length > 0) {
-      toggleCategory(section.id)
-      if (sectionId !== section.id) {
-        onSectionSubSelect(section.id, getSectionDefaultSubId(section.id) || subs[0].id)
-      }
-      return
-    }
-    onSectionSubSelect(section.id, '')
-  }
 
   return (
     <aside className={`left-panel ${expanded ? 'expanded' : 'collapsed'}`}>
@@ -96,122 +81,37 @@ export function LeftPanel({
           >
             {sections.map((section) => {
               const isCategoryExpanded = expandedCategories.has(section.id)
-              const subOptions = getSubOptions(section)
-              const hasSubs = subOptions.length > 0
+              const hasSubs = section.subOptions.length > 0
               const isActiveSection =
-                sectionId === section.id &&
-                (!hasSubs || subOptions.some((s) => s.id === subId))
-              const comingSoon = sectionIsComingSoon(section)
+                sectionId === section.id
+                && (!hasSubs || section.subOptions.some((s) => s.id === subId))
 
               return (
-                <div key={section.id} className="left-panel-category">
-                  <button
-                    type="button"
-                    className={`left-panel-category-header ${isCategoryExpanded ? 'expanded' : ''} ${isActiveSection ? 'active' : ''}`}
-                    onClick={() => handleSectionClick(section)}
-                    onContextMenu={(e) => handleMenuContextMenu(e, section.id)}
-                    aria-expanded={hasSubs ? isCategoryExpanded : undefined}
-                    title={section.subtitle}
-                  >
-                    <span className="left-panel-category-chevron">
-                      {hasSubs ? (isCategoryExpanded ? '▼' : '▶') : ''}
-                    </span>
-                    <span className="left-panel-category-emoji" aria-hidden>
-                      {section.emoji}
-                    </span>
-                    <span className="left-panel-category-label">{section.label}</span>
-                    {comingSoon ? (
-                      <span className="left-panel-soon-badge">{section.comingSoonLabel ?? 'Scheduled'}</span>
-                    ) : section.status === 'partial' ? (
-                      <span className="left-panel-partial-badge">Partial</span>
-                    ) : null}
-                  </button>
-                  {hasSubs && isCategoryExpanded && (
-                    <ul className="left-panel-sub-list">
-                      {subOptions.map((sub) => (
-                        <li key={sub.id}>
-                          <button
-                            type="button"
-                            className={`left-panel-sub-item ${sectionId === section.id && subId === sub.id ? 'active' : ''}`}
-                            onClick={() => onSectionSubSelect(section.id, sub.id)}
-                            title={sub.description ?? sub.label}
-                          >
-                            {sub.label}
-                            {subOptionIsComingSoon(sub) ? (
-                              <span className="left-panel-soon-badge small">{sub.comingSoonLabel ?? 'Scheduled'}</span>
-                            ) : null}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
+                <LeftPanelCategory
+                  key={section.id}
+                  section={section}
+                  isCategoryExpanded={isCategoryExpanded}
+                  isActiveSection={isActiveSection}
+                  sectionId={sectionId}
+                  subId={subId}
+                  onSectionClick={(s) =>
+                    handleLeftPanelSectionClick(s, sectionId, toggleCategory, onSectionSubSelect)
+                  }
+                  onSubSelect={onSectionSubSelect}
+                  onContextMenu={handleMenuContextMenu}
+                />
               )
             })}
           </nav>
           {menuContext && (
-            <>
-              <div
-                className="left-panel-menu-context-backdrop"
-                onClick={closeMenuContext}
-                onContextMenu={closeMenuContext}
-                aria-hidden
-              />
-              <div
-                className="left-panel-menu-context-menu"
-                style={{ left: menuContext.x, top: menuContext.y }}
-                role="menu"
-              >
-                {menuContext.targetSectionId != null && (
-                  <>
-                    <button
-                      type="button"
-                      className="left-panel-menu-context-item"
-                      role="menuitem"
-                      onClick={() => {
-                        collapseCategory(menuContext.targetSectionId!)
-                        closeMenuContext()
-                      }}
-                    >
-                      Collapse
-                    </button>
-                    <button
-                      type="button"
-                      className="left-panel-menu-context-item"
-                      role="menuitem"
-                      onClick={() => {
-                        expandCategory(menuContext.targetSectionId!)
-                        closeMenuContext()
-                      }}
-                    >
-                      Expand
-                    </button>
-                  </>
-                )}
-                <button
-                  type="button"
-                  className="left-panel-menu-context-item"
-                  role="menuitem"
-                  onClick={() => {
-                    collapseAll()
-                    closeMenuContext()
-                  }}
-                >
-                  Collapse all
-                </button>
-                <button
-                  type="button"
-                  className="left-panel-menu-context-item"
-                  role="menuitem"
-                  onClick={() => {
-                    expandAll()
-                    closeMenuContext()
-                  }}
-                >
-                  Expand all
-                </button>
-              </div>
-            </>
+            <LeftPanelMenuContextMenu
+              menuContext={menuContext}
+              onClose={() => setMenuContext(null)}
+              onCollapseCategory={collapseCategory}
+              onExpandCategory={expandCategory}
+              onCollapseAll={collapseAll}
+              onExpandAll={expandAll}
+            />
           )}
         </div>
       )}

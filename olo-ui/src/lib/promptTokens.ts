@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 export const SYSTEM_PROMPT_PARAMETER_ID = 'systemPrompt'
 
 /** Canonical planner macro names (keep in sync with plannerContext). */

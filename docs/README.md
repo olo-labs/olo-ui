@@ -1,3 +1,7 @@
+<!--
+Copyright (c) 2026 Olo Labs
+SPDX-License-Identifier: Apache-2.0
+-->
 # Olo
 
 Backend (olo-be) and frontend (olo-ui) for Olo. **This directory is the repository root.** It contains both projects; they can run as a **single Docker image** (combined container) or separately for development. Configure the backend via environment variables — see **[docs/ENVIRONMENT.md](docs/ENVIRONMENT.md)**. For a suggested GitHub repo description, see [.github/DESCRIPTION.md](.github/DESCRIPTION.md).

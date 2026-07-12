@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /**
  * Studio drag-and-drop port wiring rules — mirrors org.olo.spi.port.PortSchemaCompatibility.
  */

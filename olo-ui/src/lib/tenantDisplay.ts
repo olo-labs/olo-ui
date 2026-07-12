@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 import type { Tenant } from '../types/tenant'
 
 /** Display label for tenant: name if non-empty, else id. Use in components (no import from api/rest). */

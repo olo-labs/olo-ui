@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /**
  * Example contextual tool: uses only context.storeContext (owning-store slice).
  * Does not import API or other domain stores.

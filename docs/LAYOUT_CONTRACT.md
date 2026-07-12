@@ -1,3 +1,7 @@
+<!--
+Copyright (c) 2026 Olo Labs
+SPDX-License-Identifier: Apache-2.0
+-->
 # Layout contract
 
 The app layout is fixed. Do not repurpose panels for unrelated concerns. Menu is user-centric: **Build**, **Run**, **Investigate**, **System**.

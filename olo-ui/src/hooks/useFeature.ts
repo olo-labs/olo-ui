@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 import { useMemo } from 'react'
 import { isFeatureEnabled, type FeatureId } from '../config/features'
 import { SECTIONS, type SectionConfig } from '../types/layout'

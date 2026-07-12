@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 import { describe, expect, it } from 'vitest'
 import { buildCatalogFlowEdgeData, edgeTooltipText, nodeTooltipLines } from './canvasLabels'
 import type { CatalogFlowNodeData } from './workflowGraph'
@@ -10,7 +14,7 @@ describe('canvasLabels', () => {
     }
     expect(nodeTooltipLines('start', data, { id: 'olo-core:START', description: 'Entry point' })).toEqual([
       'Start',
-      'Start · start',
+      'START · start',
       'Entry point',
     ])
   })

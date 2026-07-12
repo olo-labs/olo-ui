@@ -1,49 +1,19 @@
-import type { CatalogParameter, CatalogComponentBase } from '../types/catalog'
-import type { WorkflowDocument, WorkflowParameter } from '../types/workflow'
-import { agentModelOptions } from '../lib/workflowModelProviders'
-import { catalogStore } from '../store/catalogStore'
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
+import type { CatalogComponentBase, CatalogParameter } from '../types/catalog'
+import type { WorkflowDocument } from '../types/workflow'
+import { SYSTEM_PROMPT_PARAMETER_ID } from '../lib/promptTokens'
 import {
-  readPlannerContext,
-  updatePlannerContext,
-} from '../lib/plannerContext'
-import { PromptTokenTextarea } from './PromptTokenTextarea'
-import {
-  SYSTEM_PROMPT_PARAMETER_ID,
-  buildPromptInsertOptions,
-} from '../lib/promptTokens'
+  WorkflowParameterModelField,
+  WorkflowParameterPromptField,
+} from './WorkflowParameterPromptField'
 
-export function workflowParameterToDescriptor(
-  id: string,
-  param: WorkflowParameter,
-): CatalogParameter {
-  return {
-    id,
-    type: param.type ?? 'string',
-    label: param.label ?? id,
-    description: param.description,
-    required: param.required,
-    validation: param.validation,
-    ui: param.ui,
-  }
-}
-
-export function updateWorkflowParameterValue(
-  workflow: WorkflowDocument,
-  paramId: string,
-  value: unknown,
-): WorkflowDocument {
-  const existing = workflow.parameters?.[paramId] ?? { type: 'string' }
-  return {
-    ...workflow,
-    parameters: {
-      ...workflow.parameters,
-      [paramId]: {
-        ...existing,
-        defaultValue: value,
-      },
-    },
-  }
-}
+export {
+  workflowParameterToDescriptor,
+  updateWorkflowParameterValue,
+} from '../lib/workflowParameterHelpers'
 
 export function WorkflowParameterField({
   descriptor,
@@ -115,83 +85,29 @@ export function WorkflowParameterField({
   }
 
   if (widget === 'MODEL_SELECTOR' && workflow) {
-    const stringValue = value == null ? '' : String(value)
     return (
-      <label className={rowClass}>
-        <span className="catalog-flow-param-label">{label}</span>
-        <select
-          className={inputClass}
-          value={stringValue}
-          onChange={(e) => onChange(e.target.value)}
-        >
-          <option value="">Select…</option>
-          {agentModelOptions(workflow).map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </label>
+      <WorkflowParameterModelField
+        descriptor={descriptor}
+        value={value}
+        onChange={onChange}
+        compact={compact}
+        workflow={workflow}
+      />
     )
   }
 
   if (widget === 'TEXTAREA' && descriptor.id === SYSTEM_PROMPT_PARAMETER_ID) {
-    const stringValue = value == null ? '' : String(value)
-    const plannerContext = workflow ? readPlannerContext(workflow) : null
-    const resolvedCatalogTools = catalogTools ?? catalogStore.getState().catalog?.tools ?? []
-
-    const patchPlannerContext = (patch: { injectCapabilities?: boolean; injectAgents?: boolean }) => {
-      if (!workflow || !onWorkflowChange) return
-      onWorkflowChange(updatePlannerContext(workflow, patch, resolvedCatalogTools))
-    }
-
     return (
-      <div className={compact ? 'catalog-flow-param-row catalog-flow-param-row-stack' : 'workflow-param-row-stack'}>
-        <span className={compact ? 'catalog-flow-param-label' : 'tenant-config-label'}>{label}</span>
-        <PromptTokenTextarea
-          compact={compact}
-          rows={compact ? 3 : 6}
-          value={stringValue}
-          placeholder={descriptor.ui?.placeholder}
-          workflowVariableNames={workflowVariableNames}
-          insertOptions={buildPromptInsertOptions(workflowVariableNames)}
-          textareaClassName={compact ? 'catalog-flow-param-textarea' : 'tenant-config-input workflow-param-textarea'}
-          onChange={(next) => onChange(next)}
-        />
-        {workflow && onWorkflowChange && plannerContext ? (
-          <div className="prompt-inject-options">
-            <label className="prompt-inject-option">
-              <input
-                type="checkbox"
-                checked={plannerContext.injectCapabilities}
-                onChange={(e) => patchPlannerContext({ injectCapabilities: e.target.checked })}
-              />
-              <span>Tools</span>
-            </label>
-            <label className="prompt-inject-option">
-              <input
-                type="checkbox"
-                checked={plannerContext.injectAgents}
-                onChange={(e) => patchPlannerContext({ injectAgents: e.target.checked })}
-              />
-              <span>Agents</span>
-            </label>
-            <p className="prompt-inject-hint">
-              When enabled, tool and agent definitions are appended to the prompt at run time, in
-              addition to {'{tools}'} and {'{agents}'} placeholders in your template.
-              {plannerContext.selectedTools.length > 0 || plannerContext.selectedAgents.length > 0 ? (
-                <>
-                  {' '}
-                  Using {plannerContext.selectedTools.length} tool
-                  {plannerContext.selectedTools.length === 1 ? '' : 's'} and{' '}
-                  {plannerContext.selectedAgents.length} agent
-                  {plannerContext.selectedAgents.length === 1 ? '' : 's'} from planner context.
-                </>
-              ) : null}
-            </p>
-          </div>
-        ) : null}
-      </div>
+      <WorkflowParameterPromptField
+        descriptor={descriptor}
+        value={value}
+        onChange={onChange}
+        compact={compact}
+        workflowVariableNames={workflowVariableNames}
+        workflow={workflow}
+        onWorkflowChange={onWorkflowChange}
+        catalogTools={catalogTools}
+      />
     )
   }
 

@@ -1,3 +1,7 @@
+<!--
+Copyright (c) 2026 Olo Labs
+SPDX-License-Identifier: Apache-2.0
+-->
 # Workflow presets baked into the olo-ui Docker image.
 
 This folder is copied to `/app/olo-configuration` at container runtime.

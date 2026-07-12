@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /**
  * Stable public UI extension surface. Declarative only: extensions register metadata,
  * not behavior-heavy logic. The host owns injection points and resolves what to render.

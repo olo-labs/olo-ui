@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 import { useState, useEffect } from 'react'
 import type { Tenant } from '../types/tenant'
 

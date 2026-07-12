@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 import type { WorkflowDocument, WorkflowEdge, WorkflowNode } from '../types/workflow'
 import { normalizeNodeType } from './boundaryNodes'
 import { resolveLayoutGrid } from './workflowDesigner'

@@ -1,3 +1,7 @@
+<!--
+Copyright (c) 2026 Olo Labs
+SPDX-License-Identifier: Apache-2.0
+-->
 # Olo (frontend)
 
 REST-oriented frontend for Olo. Built with React, TypeScript, and Vite. Proxies `/api` to the backend (olo-be). **Build is Gradle-based** (Gradle runs Node/npm via the Node plugin).

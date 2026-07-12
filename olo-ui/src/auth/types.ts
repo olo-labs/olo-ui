@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /**
  * Permission & role scaffolding. Even if not used yet, future multi-user access control becomes additive.
  */

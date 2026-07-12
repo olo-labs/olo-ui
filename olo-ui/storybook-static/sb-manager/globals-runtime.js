@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 var AB = Object.create;
 var v0 = Object.defineProperty;
 var _B = Object.getOwnPropertyDescriptor;

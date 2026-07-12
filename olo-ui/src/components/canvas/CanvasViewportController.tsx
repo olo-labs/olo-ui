@@ -1,5 +1,9 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 import { useEffect, useRef } from 'react'
-import { useReactFlow } from '@xyflow/react'
+import { useReactFlow, useStore } from '@xyflow/react'
 import {
   CANVAS_FIT_VIEW_PADDING,
   type WorkflowCanvasView,
@@ -19,10 +23,15 @@ export function CanvasViewportController({
   onViewApplied,
 }: CanvasViewportControllerProps) {
   const { setViewport, fitView } = useReactFlow()
+  const { width, height } = useStore((state) => ({
+    width: state.width,
+    height: state.height,
+  }))
   const appliedKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (appliedKeyRef.current === workflowKey) return
+    if (width <= 0 || height <= 0) return
     appliedKeyRef.current = workflowKey
 
     if (savedView?.viewport) {
@@ -39,7 +48,7 @@ export function CanvasViewportController({
     }
 
     onViewApplied?.()
-  }, [fitView, nodeCount, onViewApplied, savedView, setViewport, workflowKey])
+  }, [fitView, height, nodeCount, onViewApplied, savedView, setViewport, width, workflowKey])
 
   return null
 }

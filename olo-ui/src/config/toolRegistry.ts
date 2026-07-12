@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /**
  * Tool registry: map of tool ID → metadata; optional component registry for host-owned tool UIs.
  * Contextual tools per sub-option are defined in layout (SubOption.toolIds).

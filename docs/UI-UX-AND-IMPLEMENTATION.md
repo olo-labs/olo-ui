@@ -1,3 +1,7 @@
+<!--
+Copyright (c) 2026 Olo Labs
+SPDX-License-Identifier: Apache-2.0
+-->
 # Olo — UI/UX and Implementation
 
 This document describes the current user interface, user experience, and technical implementation of Olo (frontend: olo-ui, backend: olo-be). For contributor guidance (state philosophy, naming, stores, when to use store vs local state), see **[ARCHITECTURE.md](./ARCHITECTURE.md)**.

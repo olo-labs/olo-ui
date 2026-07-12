@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 import { getOloRuntimeApiPrefix } from '../lib/oloRuntimeBase'
 
 const API = getOloRuntimeApiPrefix()
@@ -59,6 +63,15 @@ export async function getRuntimeRun(runId: string): Promise<{ runId: string; sta
   } catch {
     return null
   }
+}
+
+export async function cancelRuntimeRun(runId: string): Promise<void> {
+  const res = await fetch(`${API}/runs/${encodeURIComponent(runId)}/cancel`, {
+    method: 'POST',
+  })
+  if (res.status === 404) throw new Error('Run not found')
+  if (res.status === 409) throw new Error('Run is no longer in progress')
+  if (!res.ok) throw new Error(`Cancel run failed: HTTP ${res.status}`)
 }
 
 export async function getRuntimeRunResponse(runId: string): Promise<string> {

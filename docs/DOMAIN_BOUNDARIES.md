@@ -1,3 +1,7 @@
+<!--
+Copyright (c) 2026 Olo Labs
+SPDX-License-Identifier: Apache-2.0
+-->
 # Domain boundaries
 
 Domains are implemented as Zustand stores and own specific UI and data. To avoid circular logic and cognitive collapse, **domains may depend only on**:

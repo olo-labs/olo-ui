@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 import { useEffect, useState } from 'react'
 import { applyNodeLabel } from '../../lib/workflowGraph'
 import { workflowConfigurationStore } from '../../store/workflowConfigurationStore'

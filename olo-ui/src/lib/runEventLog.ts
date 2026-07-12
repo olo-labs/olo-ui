@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 import type { RunEventDto } from '../api/oloRuntime'
 import { extractAssistantText } from './assistantResponse'
 

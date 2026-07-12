@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 import type { RunEventDto } from '../api/oloRuntime'
 
 /** Shown only after a completed/failed run when no workflow return text could be resolved. */
@@ -134,6 +138,9 @@ export function normalizeResponseText(text: string | null | undefined): string |
 }
 
 export function fallbackResponseMessage(runStatus: string | undefined): string {
+  if (runStatus === 'cancelled') {
+    return 'Run cancelled.'
+  }
   if (runStatus === 'failed') {
     return 'The workflow failed before a response could be generated. Check the progress log and olo-worker logs.'
   }

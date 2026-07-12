@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /**
  * Run context: shared state for a run when shown in Runtime or Ledger (overview, tree, timeline, etc.).
  *

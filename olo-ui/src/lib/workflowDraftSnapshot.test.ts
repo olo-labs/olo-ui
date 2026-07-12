@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 import { describe, expect, it } from 'vitest'
 import fs from 'fs'
 import path from 'path'
@@ -78,7 +82,7 @@ describe('workflowDraftSnapshot', () => {
   it('keeps current-active agent.json clean after canvas mount adjustments', () => {
     const agentPath = path.resolve(
       __dirname,
-      '../../../../olo-mono/olo-definition/olo-configuration/current-active/agent.json',
+      '../../../../olo-mono/olo-definition/olo-configuration/default/agent.json',
     )
     const agent = JSON.parse(fs.readFileSync(agentPath, 'utf8')) as WorkflowDocument
     const normalized = normalizeWorkflowDraft(agent)

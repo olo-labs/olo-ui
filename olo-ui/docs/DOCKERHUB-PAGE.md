@@ -1,3 +1,7 @@
+<!--
+Copyright (c) 2026 Olo Labs
+SPDX-License-Identifier: Apache-2.0
+-->
 # Copy-paste content for Docker Hub repository page
 
 **Canonical version:** [../../docs/DOCKERHUB-PAGE.md](../../docs/DOCKERHUB-PAGE.md) (repo root docs).

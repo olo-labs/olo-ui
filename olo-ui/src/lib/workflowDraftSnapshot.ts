@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 import { normalizeWorkflowBoundaries } from './boundaryNodes'
 import { canvasViewForDirtyComparison, readWorkflowCanvasView } from './workflowCanvasView'
 import { ensureWorkflowModelInfrastructure } from './workflowModelProviders'
@@ -73,5 +77,18 @@ export function isWorkflowDraftDirty(
   savedSnapshot: string | null,
 ): boolean {
   if (!savedSnapshot) return false
-  return workflowDraftSnapshot(document) !== savedSnapshot
+
+  const current = workflowDraftForDirtyComparison(document)
+  const saved = JSON.parse(savedSnapshot) as WorkflowDocument
+  const savedCanvasView = saved.metadata?.canvasView as { viewport?: unknown } | undefined
+  const savedHadCanvasViewport = Boolean(savedCanvasView?.viewport)
+
+  if (!savedHadCanvasViewport) {
+    const { canvasView: _currentCanvasView, ...currentMetadata } = current.metadata ?? {}
+    const { canvasView: _savedCanvasView, ...savedMetadata } = saved.metadata ?? {}
+    return JSON.stringify({ ...current, metadata: currentMetadata })
+      !== JSON.stringify({ ...saved, metadata: savedMetadata })
+  }
+
+  return JSON.stringify(current) !== savedSnapshot
 }

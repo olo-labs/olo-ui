@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 export interface EmptyStateProps {
   /** Message to show when there is no data / no selection */
   message: string

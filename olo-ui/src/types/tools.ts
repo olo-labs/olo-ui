@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /**
  * Tools panel identity: each item has a clear purpose for infra UI.
  * Prevents "TOOLS" from feeling like an undefined placeholder.

@@ -1,3 +1,7 @@
+<!--
+Copyright (c) 2026 Olo Labs
+SPDX-License-Identifier: Apache-2.0
+-->
 # Environment variables
 
 This document describes how to use environment variables with Olo (olo-be and the combined Docker image). The frontend (olo-ui) uses a fixed API base `/api/v1` and does not require env vars for normal use.

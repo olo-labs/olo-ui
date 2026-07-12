@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /** Drag-and-drop payload from Components panel to canvas. */
 
 export const CATALOG_DRAG_MIME = 'application/olo-catalog-component'

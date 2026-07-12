@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /**
  * Schema / Studio domain store: canvas, versions, schema editing, test run results.
  * One store per domain — do not split by component (e.g. no canvasStore, versionsStore).

@@ -1,3 +1,7 @@
+<!--
+Copyright (c) 2026 Olo Labs
+SPDX-License-Identifier: Apache-2.0
+-->
 # olo-ui docs
 
 Frontend-specific documentation for the **olo-ui** package (`olo-ui/olo-ui/`). Cross-cutting contributor guides live in the repository root [docs/](../../docs/) folder.

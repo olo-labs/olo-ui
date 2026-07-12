@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /** Normalize emoji for JSON storage (NFC, no stray variation-selector fragments). */
 export function normalizeWorkflowEmoji(emoji: string | undefined | null): string | undefined {
   if (emoji == null) return undefined

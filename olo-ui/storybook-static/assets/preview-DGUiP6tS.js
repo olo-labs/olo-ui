@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 const{STORY_CHANGED:r}=__STORYBOOK_MODULE_CORE_EVENTS__,{addons:s}=__STORYBOOK_MODULE_PREVIEW_API__,{global:O}=__STORYBOOK_MODULE_GLOBAL__;var d="storybook/highlight",i="storybookHighlight",g=`${d}/add`,E=`${d}/reset`,{document:l}=O,H=(e="#FF4785",t="dashed")=>`
   outline: 2px ${t} ${e};
   outline-offset: 2px;

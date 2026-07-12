@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 import type { CatalogComponentBase, CatalogNode, CatalogParameter, StudioCatalog } from '../types/catalog'
 
 import type { WorkflowDocument, WorkflowNode } from '../types/workflow'

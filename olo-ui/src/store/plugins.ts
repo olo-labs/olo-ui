@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2026 Olo Labs
+ * SPDX-License-Identifier: Apache-2.0
+ */
 /**
  * Plugins domain store: executor registry, plugin metadata.
  * One store per domain — do not split by component.

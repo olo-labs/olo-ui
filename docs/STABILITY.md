@@ -1,3 +1,7 @@
+<!--
+Copyright (c) 2026 Olo Labs
+SPDX-License-Identifier: Apache-2.0
+-->
 # Stability and deprecation policy
 
 Defining this early builds trust and prevents silent breaking changes.
