@@ -5,11 +5,13 @@
 import type { StudioCatalog } from '../types/catalog'
 import type {
   InlinePropertyConfig,
+  NodeTypeDesignerConfig,
   WorkflowDocument,
   WorkflowNode,
 } from '../types/workflow'
 import { normalizeNodeType } from './boundaryNodes'
 import { findCatalogNode } from './catalogLookup'
+import { readToolSubtypeKey } from './nodeConfiguration'
 import {
   readNodeDesigner,
   readNodeTypeDesigner,
@@ -34,13 +36,39 @@ function mergeInlineProperties(
   return typeProperties ?? []
 }
 
+function resolveTypeDesignerForNode(
+  workflow: WorkflowDocument | null | undefined,
+  node: WorkflowNode,
+): NodeTypeDesignerConfig {
+  const workflowType = normalizeNodeType(node.type)
+  const base = readNodeTypeDesigner(workflow, workflowType)
+  if (workflowType !== 'TOOL') {
+    return base
+  }
+  const subtypeKey = readToolSubtypeKey(node)
+  if (!subtypeKey) {
+    return base
+  }
+  const nested = base as unknown as Record<string, NodeTypeDesignerConfig>
+  const subtype = nested[subtypeKey]
+  if (!subtype || typeof subtype !== 'object') {
+    return base
+  }
+  return {
+    emoji: subtype.emoji ?? base.emoji,
+    typeLabel: subtype.typeLabel ?? base.typeLabel,
+    description: subtype.description ?? base.description,
+    inlineProperties: subtype.inlineProperties ?? base.inlineProperties,
+  }
+}
+
 export function resolveNodePresentation(
   workflow: WorkflowDocument | null | undefined,
   node: WorkflowNode,
   catalog: StudioCatalog | null,
 ): NodePresentation {
   const workflowType = normalizeNodeType(node.type)
-  const typeDesigner = readNodeTypeDesigner(workflow, workflowType)
+  const typeDesigner = resolveTypeDesignerForNode(workflow, node)
   const nodeDesigner = readNodeDesigner(node)
   const catalogNode = findCatalogNode(catalog, workflowType, workflow)
   const size = resolveNodeSize(workflow)
@@ -81,7 +109,7 @@ export function resolveNodeTypeLabel(
 ): string {
   const workflowType = normalizeNodeType(node.type)
   const nodeDesigner = readNodeDesigner(node as WorkflowNode)
-  const typeDesigner = readNodeTypeDesigner(workflow, workflowType)
+  const typeDesigner = resolveTypeDesignerForNode(workflow, node as WorkflowNode)
   const catalogNode = findCatalogNode(catalog, workflowType, workflow)
   return (
     nodeDesigner.typeLabel?.trim()

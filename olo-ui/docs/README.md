@@ -27,6 +27,7 @@ Frontend-specific documentation for the **olo-ui** package (`olo-ui/olo-ui/`). C
 | Workflows → Agents | `/workflows/agents` | Tree view of presets; import, export, save `olo-configuration` JSON |
 | Workflows → Log | `/workflows/log` | Read-only canvas of runtime-injected graphs from `olo-configuration/log/`; drag nodes to rearrange (session-only) |
 | Administration → Tenants | `/administration/tenants` | Tenant CRUD |
+| Administration → Scenarios | `/administration/scenarios` | Activate `olo-configuration` scenario folders into `current-active` |
 | Overview, Executions, Observability, Extensions | `/overview`, … | Scheduled placeholders |
 
 ### Local run
@@ -36,7 +37,7 @@ Frontend-specific documentation for the **olo-ui** package (`olo-ui/olo-ui/`). C
 cd olo-ui\olo-be
 .\gradlew.bat bootRun
 
-# Frontend (port 3000, proxies /api)
+# Frontend (port 3000, proxies /api → :8082 and /runtime-api → :7080)
 cd olo-ui\olo-ui
 npm install
 npm run dev

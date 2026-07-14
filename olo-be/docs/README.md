@@ -14,6 +14,10 @@ Backend-specific documentation. For run and build instructions, see [olo-be/READ
 - Workflows: `GET/PUT/DELETE /api/v1/configuration/workflows` (preset CRUD)
 - Graph logs: `GET /api/v1/configuration/logs` (read-only list + `mergedGraph` by file)
 - Catalog: `GET /api/v1/catalog`
+- Configuration folders: `GET /api/v1/configuration/folders`, `POST /api/v1/configuration/folders/{id}/activate`
+- System refresh: `POST /api/v1/system/refresh` (signals worker via Redis)
+- Model provider test: `POST /api/v1/model-providers/test`
+- Dropdown details: `GET /api/v1/dropdown-details`
 - All endpoints are versioned under `/api/v1/`; see [STABILITY.md](../../docs/STABILITY.md) (in repo root docs) for versioning and deprecation.
 
 ## Configuration and environment variables

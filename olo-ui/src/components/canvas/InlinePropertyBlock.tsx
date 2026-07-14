@@ -14,13 +14,19 @@ import {
   applyAgentModelSelection,
   applyProviderRef,
   agentModelOptions,
+  isAgentNodeType,
   readAgentModelSelection,
   readProviderRef,
   workflowModelProviders,
   providerKind,
 } from '../../lib/workflowModelProviders'
-import { workflowVariables } from '../../lib/workflowResources'
+import {
+  applyNodeConfigValue,
+  readNodeConfigNumber,
+  readNodeConfigValue,
+} from '../../lib/nodeConfiguration'
 import { sortedWorkflowParameters } from '../../lib/inlineWorkflowParameters'
+import { workflowVariables } from '../../lib/workflowResources'
 import type { InlinePropertyConfig, WorkflowDocument, WorkflowNode } from '../../types/workflow'
 import type { StudioCatalog } from '../../types/catalog'
 import {
@@ -124,13 +130,23 @@ export function InlinePropertyBlock({
   }
 
   if (property.widget === 'MODEL_SELECTOR') {
+    const configKey = property.id || 'modelRef'
+    const selected = isAgentNodeType(node.type)
+      ? readAgentModelSelection(node, workflow)
+      : readNodeConfigValue(node, configKey, property.defaultValue ?? '')
     return (
       <label className="catalog-flow-param-row">
         <span className="catalog-flow-param-label">{title}</span>
         <select
           className="catalog-flow-param-input"
-          value={readAgentModelSelection(node, workflow)}
-          onChange={(e) => onChange(applyAgentModelSelection(workflow, node.id, e.target.value))}
+          value={selected}
+          onChange={(e) => {
+            if (isAgentNodeType(node.type)) {
+              onChange(applyAgentModelSelection(workflow, node.id, e.target.value))
+            } else {
+              onChange(applyNodeConfigValue(workflow, node.id, configKey, e.target.value))
+            }
+          }}
         >
           <option value="">Select…</option>
           {agentModelOptions(workflow).map((option) => (
@@ -159,6 +175,47 @@ export function InlinePropertyBlock({
             </option>
           ))}
         </select>
+      </label>
+    )
+  }
+
+  if (property.widget === 'STRING') {
+    const value = readNodeConfigValue(node, property.id, property.defaultValue ?? '')
+    return (
+      <label className="catalog-flow-param-row">
+        <span className="catalog-flow-param-label">{title}</span>
+        <input
+          className="catalog-flow-param-input"
+          type="text"
+          value={value}
+          onChange={(e) => onChange(applyNodeConfigValue(workflow, node.id, property.id, e.target.value))}
+        />
+      </label>
+    )
+  }
+
+  if (property.widget === 'NUMBER') {
+    const fallback = Number(property.defaultValue ?? '0') || 0
+    const value = readNodeConfigNumber(node, property.id, fallback)
+    return (
+      <label className="catalog-flow-param-row">
+        <span className="catalog-flow-param-label">{title}</span>
+        <input
+          className="catalog-flow-param-input"
+          type="number"
+          value={value}
+          onChange={(e) => {
+            const parsed = Number(e.target.value)
+            onChange(
+              applyNodeConfigValue(
+                workflow,
+                node.id,
+                property.id,
+                Number.isFinite(parsed) ? parsed : fallback,
+              ),
+            )
+          }}
+        />
       </label>
     )
   }

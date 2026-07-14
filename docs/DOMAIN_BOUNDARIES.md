@@ -10,7 +10,7 @@ Domains are implemented as Zustand stores and own specific UI and data. To avoid
 - **Shared types** (`types/*`)
 - **runContext** (if explicitly shared between Runtime and Ledger)
 
-**Domains must not depend on each other.** For example:
+**Domains should not import each other's stores.** Orchestration at the action layer is acceptable (e.g. `configurationFolderStore` reloads catalog and workflow configuration after activation). Examples of what to avoid:
 
 - ❌ `runtimeStore` importing `ledgerStore`
 - ❌ `ledgerStore` importing `runtimeStore`
@@ -67,6 +67,10 @@ This prevents conceptual and architectural collapse.
 |----------------|------|--------|--------------|
 | **ui** | Panels, navigation (section/sub/run), theme, tenant dropdown | — | Other domain stores |
 | **tenantConfig** | Tenant list, selection, loading, CRUD actions | `api/rest` | runtime, ledger, plugins, schema |
+| **workflowConfiguration** | Workflow preset draft, save/reload | `api/rest`, `catalogStore` (read-only metadata) | runtime, ledger |
+| **configurationFolder** | Scenario folder list and activation | `api/rest`; orchestrates reload via `catalogStore` / `workflowConfigurationStore` actions | — |
+| **catalog** | Merged extension catalog from olo-be | `api/rest` | other domain stores |
+| **graphLog** | Read-only runtime graph injection logs | `api/rest` | other domain stores |
 | **runtime** | Live runs, queues, metrics, run-level view state | `api/rest`, `runContext` (optional) | ledger, tenantConfig, plugins, schema |
 | **ledger** | Historical runs, cost, snapshots, replay, run-level view state | `api/rest`, `runContext` (optional) | runtime, tenantConfig, plugins, schema |
 | **runContext** | Shared run payload for Runtime/Ledger | `api/rest` | runtime, ledger (no store imports) |

@@ -18,6 +18,10 @@ import { CanvasStartNodeProperties } from './CanvasStartNodeProperties'
 import { CanvasEndNodeProperties } from './CanvasEndNodeProperties'
 import { CanvasAgentNodeProperties } from './CanvasAgentNodeProperties'
 import { CanvasModelConsumerNodeProperties } from './CanvasModelConsumerNodeProperties'
+import {
+  CanvasDesignerNodeProperties,
+  isDesignerConfigurableNode,
+} from './CanvasDesignerNodeProperties'
 import { NodeLabelInput } from './NodeLabelInput'
 
 export interface CanvasNodePropertiesProps {
@@ -76,6 +80,18 @@ export function CanvasNodeProperties({
       <CanvasModelConsumerNodeProperties
         workflow={workflow}
         node={node}
+        dirty={dirty}
+        onChange={onChange}
+      />
+    )
+  }
+
+  if (isDesignerConfigurableNode(node)) {
+    return (
+      <CanvasDesignerNodeProperties
+        workflow={workflow}
+        node={node}
+        typeLabel={typeLabel}
         dirty={dirty}
         onChange={onChange}
       />

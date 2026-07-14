@@ -15,12 +15,17 @@ export type InlinePropertyWidget =
   | 'WORKFLOW_PARAMETERS'
   | 'MODEL_SELECTOR'
   | 'PROVIDER_SELECTOR'
+  | 'STRING'
+  | 'NUMBER'
 
 export interface InlinePropertyConfig {
   id: string
   widget: InlinePropertyWidget
   label?: string
   binding?: string
+  defaultValue?: string
+  group?: string
+  order?: number
 }
 
 export interface NodeTypeDesignerConfig {

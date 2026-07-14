@@ -4,7 +4,7 @@ SPDX-License-Identifier: Apache-2.0
 -->
 # Environment variables
 
-This document describes how to use environment variables with Olo (olo-be and the combined Docker image). The frontend (olo-ui) uses a fixed API base `/api/v1` and does not require env vars for normal use.
+This document describes how to use environment variables with Olo (olo-be and the combined Docker image). The studio frontend (olo-ui) uses `/api/v1` for olo-be and `/runtime-api` for workflow execution (olo chat/runtime backend on port 7080).
 
 ---
 
@@ -22,7 +22,15 @@ This document describes how to use environment variables with Olo (olo-be and th
 | **OLO_LOG_DIRECTORY** | — | Graph log folder (`olo.configuration.log-directory`). When unset, olo-be resolves `{configuration}/log` or sibling `olo-configuration/log`. |
 | **OLO_CATALOG_DIRECTORY** | — | Optional override for merged `catalog.json` (Docker image bundles classpath catalog). |
 | **olo.worker.refresh-key** / **OLO_WORKER_REFRESH_KEY** | `olo:worker:refresh` | Redis key for worker config reload (`POST /api/v1/system/refresh`). |
-| **olo.runtime.base-url** | `http://localhost:7080` | Olo chat/runtime backend for stack refresh. |
+| **olo.runtime.base-url** | `http://localhost:7080` | Olo chat/runtime backend for stack refresh and Builder workflow runs. |
+
+### olo-ui frontend (dev)
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| **VITE_OLO_RUNTIME_API_BASE** | _(empty — uses `/runtime-api`)_ | Override runtime API base when not using the Vite dev proxy. |
+
+In development, `vite.config.ts` proxies `/api` → `localhost:8082` (olo-be) and `/runtime-api` → `localhost:7080` (workflow execution).
 
 Spring Boot maps environment variables to properties: uppercase with underscores become lowercase with dots (e.g. `OLO_TENANT_IDS` → `olo.tenant.ids`, `SPRING_DATA_REDIS_HOST` → `spring.data.redis.host`).
 

@@ -21,7 +21,7 @@ For contributor conventions (state flow, store rules, naming), see the repositor
 | **Executions** | `/executions` | Scheduled |
 | **Observability** | `/observability` | Scheduled |
 | **Extensions** | `/extensions` | Scheduled |
-| **Administration** | `/administration/tenants` | Partial — tenant CRUD |
+| **Administration** | `/administration/tenants`, `/administration/scenarios` | Tenant CRUD; scenario activation into `current-active` |
 
 The UI is **REST-oriented**: server data flows through `src/api/rest.ts` into Zustand domain stores. Components stay declarative.
 
@@ -39,7 +39,8 @@ The UI is **REST-oriented**: server data flows through `src/api/rest.ts` into Zu
 │  │  • Catalog-driven editors + React Flow canvas                     │  │
 │  └────────────────────────────┬──────────────────────────────────────┘  │
 └───────────────────────────────┼─────────────────────────────────────────┘
-                                │  /api/v1/*  (proxied in dev & Docker)
+                                │  /api/v1/*  (olo-be, proxied in dev & Docker)
+                                │  /runtime-api/*  (workflow execution → :7080)
                                 ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
 │  olo-be (Spring Boot, port 8082)                                        │
@@ -170,22 +171,28 @@ Components never call `fetch` directly. See `src/store/README.md` and root [ARCH
 
 ## 7. API layer
 
-All HTTP via `src/api/rest.ts` under **`/api/v1`**:
+All HTTP via `src/api/rest.ts` under **`/api/v1`** (olo-be). Workflow execution uses **`src/api/oloRuntime.ts`** under **`/runtime-api`** (proxied to olo chat backend on port 7080):
 
 | Endpoint | Purpose |
 |----------|---------|
 | `GET /health` | Backend readiness |
 | `GET/POST/PUT/DELETE /tenants` | Tenant CRUD |
-| `GET /dropdowns` | Tenants, environments, run IDs |
+| `GET /dropdown-details` | Tenants, environments, run IDs |
 | `GET /catalog` | Merged `catalog.json` |
 | `GET /configuration/workflows` | List workflow `*.json` files |
 | `GET/PUT/DELETE /configuration/workflows/{file}` | Read/write/delete preset |
 | `GET /configuration/workflows/meta/root` | Configured folder path |
+| `GET /configuration/folders` | List scenario folders (Scenarios tab) |
+| `POST /configuration/folders/{id}/activate` | Activate scenario into `current-active` |
+| `POST /system/refresh` | Signal worker refresh via Redis |
+| `POST /model-providers/test` | Test LLM provider connectivity |
 | `GET /configuration/logs` | List dynamic subgraph injection logs (`*.json`) |
 | `GET /configuration/logs/{file}` | Read `mergedGraph` from a log file (read-only) |
 | `GET /configuration/logs/meta/root` | Log directory path |
 
-Dev: Vite proxies `/api` → `localhost:8082`. Docker: nginx proxies to embedded Spring Boot.
+**Runtime API** (`oloRuntime.ts`, `/runtime-api` → `:7080`): `GET /health`, `POST /sessions`, `POST /sessions/{id}/messages`, `GET /runs/{id}/events`, `POST /runs/{id}/cancel`, `POST /runs/{id}/human-input`, etc.
+
+Dev: Vite proxies `/api` → `localhost:8082`, `/runtime-api` → `localhost:7080`. Docker: nginx proxies to embedded Spring Boot.
 
 ---
 
@@ -193,7 +200,7 @@ Dev: Vite proxies `/api` → `localhost:8082`. Docker: nginx proxies to embedded
 
 `config/features.ts` gates sections at composition time (`LeftPanel`):
 
-`overview`, `workflows`, `executions`, `observability`, `extensions`, `administration`, plus sub-flags `tenantConfiguration`, `workflowConfiguration`.
+`overview`, `workflows`, `executions`, `observability`, `extensions`, `administration`, plus sub-flags `tenantConfiguration`, `workflowConfiguration`, `scenarioConfiguration`.
 
 Flags must not branch business logic inside domain stores.
 

@@ -4,7 +4,9 @@ SPDX-License-Identifier: Apache-2.0
 -->
 # Layout contract
 
-The app layout is fixed. Do not repurpose panels for unrelated concerns. Menu is user-centric: **Build**, **Run**, **Investigate**, **System**.
+> **Note:** Navigation was redesigned. Current sections are **Overview, Workflows, Executions, Observability, Extensions, Administration** (see `olo-ui/src/types/layout.ts`). The Build / Run / Investigate / System model below is **legacy** and kept for panel-ownership principles only.
+
+The app layout is fixed. Do not repurpose panels for unrelated concerns.
 
 ---
 
