@@ -204,8 +204,7 @@ export async function cancelBuilderRun(
     'appendLog' | 'setCancelling' | 'setError' | 'setFinalResponse' | 'setRunning' | 'stopRun' | 'setActiveRunId' | 'setRunStatus'
   >,
 ): Promise<void> {
-  const { activeRunIdRef } = refs
-  const { appendLog, setCancelling, setError, setFinalResponse, setRunning, stopRun } = callbacks
+  const { appendLog, setCancelling, setError } = callbacks
   if (!runId.trim()) return
 
   setCancelling(true)
