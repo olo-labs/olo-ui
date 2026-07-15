@@ -4,6 +4,10 @@ SPDX-License-Identifier: Apache-2.0
 -->
 # olo-ui docs
 
+## Contributor and owner notes
+
+This folder is the frontend contributor landing area. Add docs here when a UI feature needs local architecture, review, or workflow context; link back to root docs for platform rules. Credit owners in [../../docs/MODULE_OWNERS.md](../../docs/MODULE_OWNERS.md).
+
 Frontend-specific documentation for the **olo-ui** package (`olo-ui/olo-ui/`). Cross-cutting contributor guides live in the repository root [docs/](../../docs/) folder.
 
 ---

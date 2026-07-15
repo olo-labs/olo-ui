@@ -4,6 +4,10 @@ SPDX-License-Identifier: Apache-2.0
 -->
 # Stability and deprecation policy
 
+## Contributor and owner notes
+
+Stability contributors should document compatibility, deprecation, migration, and support expectations whenever public APIs or saved workflow formats change. Owners should review breaking changes for clear upgrade paths and contributor-facing notes. Credit stability stewardship in [MODULE_OWNERS.md](MODULE_OWNERS.md).
+
 Defining this early builds trust and prevents silent breaking changes.
 
 ---

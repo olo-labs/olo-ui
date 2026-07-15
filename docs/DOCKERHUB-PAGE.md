@@ -4,6 +4,10 @@ SPDX-License-Identifier: Apache-2.0
 -->
 # Docker Hub repository description
 
+## Contributor and owner notes
+
+Docker publishing docs are part of the first-run experience. Contributors can help by verifying commands, tags, mounted configuration paths, and screenshots; owners should keep Docker Hub copy aligned with the image behavior. Credit Docker and release ownership in [MODULE_OWNERS.md](MODULE_OWNERS.md).
+
 Copy-paste the text below into your Docker Hub repository **Description** (and **Short description**) so users know how to pull and run the image.
 
 ---

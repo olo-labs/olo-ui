@@ -4,6 +4,10 @@ SPDX-License-Identifier: Apache-2.0
 -->
 # Store discipline: one store per domain
 
+## Contributor and owner notes
+
+Store contributors should keep state scoped by domain and add loading, error, and clearError patterns for API-backed stores. Owners should review new stores carefully and credit sustained state-management stewardship in [../../../docs/MODULE_OWNERS.md](../../../docs/MODULE_OWNERS.md).
+
 **Rule: one store per domain, not per component.**
 
 Stores are scoped by **domain** (runtime, ledger, configuration, etc.), not by UI component. This keeps state meaningful and avoids store explosion.

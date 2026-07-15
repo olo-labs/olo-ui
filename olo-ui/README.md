@@ -4,6 +4,10 @@ SPDX-License-Identifier: Apache-2.0
 -->
 # Olo (frontend)
 
+## Contributor and owner notes
+
+Frontend contributors should read [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [src/store/README.md](src/store/README.md), and the root [CONTRIBUTING.md](../CONTRIBUTING.md). UI owners should keep Storybook, route behavior, store boundaries, and builder docs current. Credit frontend ownership in [../docs/MODULE_OWNERS.md](../docs/MODULE_OWNERS.md).
+
 REST-oriented frontend for Olo. Built with React, TypeScript, and Vite. Proxies `/api` to the backend (olo-be). **Build is Gradle-based** (Gradle runs Node/npm via the Node plugin).
 
 ## Requirements

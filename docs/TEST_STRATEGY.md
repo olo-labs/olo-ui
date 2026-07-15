@@ -4,6 +4,10 @@ SPDX-License-Identifier: Apache-2.0
 -->
 # Test strategy
 
+## Contributor and owner notes
+
+Testing contributors can add focused unit, integration, API, Storybook, and regression coverage. Owners should ask for tests that match risk rather than blanket snapshots. Credit testing stewardship and review areas in [MODULE_OWNERS.md](MODULE_OWNERS.md).
+
 Define patterns before contributors invent their own.
 
 ---

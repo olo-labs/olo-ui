@@ -4,6 +4,10 @@ SPDX-License-Identifier: Apache-2.0
 -->
 # Workflow presets baked into the olo-ui Docker image.
 
+## Contributor and owner notes
+
+Runtime configuration contributors should keep bundled presets, sample logs, and scenario folders useful for first-run demos. Owners should verify that Docker image defaults match this folder and credit configuration stewardship in [../../../docs/MODULE_OWNERS.md](../../../docs/MODULE_OWNERS.md).
+
 This folder is copied to `/app/olo-configuration` at container runtime.
 
 - **CI:** refreshed from `olo-mono/olo-configuration/default` plus scenario folders (`research-planner/`, etc.). **`current-active/` is not used** — it is for manual local copies only.

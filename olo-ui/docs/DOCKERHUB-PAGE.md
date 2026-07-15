@@ -4,6 +4,10 @@ SPDX-License-Identifier: Apache-2.0
 -->
 # Copy-paste content for Docker Hub repository page
 
+## Contributor and owner notes
+
+Keep this frontend Docker Hub copy in sync with the canonical root Docker Hub page. Contributors can help by validating commands and mounted workflow-folder examples; owners should update both docs together. Credit release and Docker stewardship in [../../docs/MODULE_OWNERS.md](../../docs/MODULE_OWNERS.md).
+
 **Canonical version:** [../../docs/DOCKERHUB-PAGE.md](../../docs/DOCKERHUB-PAGE.md) (repo root docs).
 
 Use the text below in your Docker Hub repository **Description** and **Short description**.

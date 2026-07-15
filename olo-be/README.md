@@ -4,6 +4,10 @@ SPDX-License-Identifier: Apache-2.0
 -->
 # olo-be
 
+## Contributor and owner notes
+
+Backend contributors should read [docs/README.md](docs/README.md), the root [CONTRIBUTING.md](../CONTRIBUTING.md), and [../docs/STABILITY.md](../docs/STABILITY.md) before changing public APIs. Backend owners should keep endpoint docs, environment variables, validation behavior, and refresh semantics current. Credit backend ownership in [../docs/MODULE_OWNERS.md](../docs/MODULE_OWNERS.md).
+
 Spring Boot REST backend for Olo.
 
 ## Requirements

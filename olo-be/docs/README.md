@@ -4,6 +4,10 @@ SPDX-License-Identifier: Apache-2.0
 -->
 # olo-be docs
 
+## Contributor and owner notes
+
+This folder is the backend contributor landing area. Add endpoint, configuration, validation, or operational notes here when backend behavior changes; link to root docs for platform contracts. Credit backend reviewers and owners in [../../docs/MODULE_OWNERS.md](../../docs/MODULE_OWNERS.md).
+
 Backend-specific documentation. For run and build instructions, see [olo-be/README.md](../README.md).
 
 ## API

@@ -4,6 +4,10 @@ SPDX-License-Identifier: Apache-2.0
 -->
 # Extensibility and governance
 
+## Contributor and owner notes
+
+Extension contributors should keep APIs declarative, documented, and safe for module owners to review. If you add a feature flag, plugin hook, tool registration path, or integration point, document the owner and sunset or support expectation. Track sustained ownership in [MODULE_OWNERS.md](MODULE_OWNERS.md).
+
 Extension surface and rules to prevent architecture erosion.
 
 ---

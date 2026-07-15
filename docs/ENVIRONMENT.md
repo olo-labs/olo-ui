@@ -4,6 +4,10 @@ SPDX-License-Identifier: Apache-2.0
 -->
 # Environment variables
 
+## Contributor and owner notes
+
+Environment docs are a high-impact entry point for new users. Contributors can help by testing setup on Windows, macOS, Linux, Docker, and Compose; owners should keep sample env files, defaults, and deployment notes aligned. Credit environment and Docker stewardship in [MODULE_OWNERS.md](MODULE_OWNERS.md).
+
 This document describes how to use environment variables with Olo (olo-be and the combined Docker image). The studio frontend (olo-ui) uses `/api/v1` for olo-be and `/runtime-api` for workflow execution (olo chat/runtime backend on port 7080).
 
 ---

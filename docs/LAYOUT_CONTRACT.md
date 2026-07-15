@@ -4,6 +4,10 @@ SPDX-License-Identifier: Apache-2.0
 -->
 # Layout contract
 
+## Contributor and owner notes
+
+Layout contributors should protect the panel roles and interaction contract so new UI work remains predictable. Owners should review changes for accessibility, responsive behavior, and whether the change belongs in navigation, tools, main content, or properties. Credit layout and UX stewardship in [MODULE_OWNERS.md](MODULE_OWNERS.md).
+
 > **Note:** Navigation was redesigned. Current sections are **Overview, Workflows, Executions, Observability, Extensions, Administration** (see `olo-ui/src/types/layout.ts`). The Build / Run / Investigate / System model below is **legacy** and kept for panel-ownership principles only.
 
 The app layout is fixed. Do not repurpose panels for unrelated concerns.

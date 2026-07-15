@@ -4,6 +4,10 @@ SPDX-License-Identifier: Apache-2.0
 -->
 # Performance guardrails
 
+## Contributor and owner notes
+
+Performance contributors can help by profiling large lists, graph canvases, store selectors, and rendering paths. Owners should require measurement or focused regression tests for changes that affect runtime views, builder canvases, logs, or data-heavy panels. Track performance ownership in [MODULE_OWNERS.md](MODULE_OWNERS.md).
+
 Define rules before Execution Tree, Timeline, Raw events, and Logs hit rendering bottlenecks.
 
 ---

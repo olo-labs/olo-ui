@@ -4,6 +4,10 @@ SPDX-License-Identifier: Apache-2.0
 -->
 # Olo — UI/UX and Implementation
 
+## Contributor and owner notes
+
+UI contributors should preserve the product workflows while improving clarity, accessibility, empty states, and reviewability. Owners should make sure design changes are reflected in Storybook or screenshots when useful. Credit design and implementation stewardship in [MODULE_OWNERS.md](MODULE_OWNERS.md).
+
 This document describes the current user interface, user experience, and technical implementation of Olo (frontend: olo-ui, backend: olo-be). For contributor guidance (state philosophy, naming, stores, when to use store vs local state), see **[ARCHITECTURE.md](./ARCHITECTURE.md)**.
 
 ---

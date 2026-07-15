@@ -4,6 +4,10 @@ SPDX-License-Identifier: Apache-2.0
 -->
 # Olo UI — Architecture
 
+## Contributor and owner notes
+
+Frontend architecture contributors should keep this file aligned with implemented routes, stores, builder behavior, and backend endpoints. Owners should review for state discipline, canvas performance, and contributor clarity. Credit frontend and builder ownership in [../../docs/MODULE_OWNERS.md](../../docs/MODULE_OWNERS.md).
+
 This document describes how **olo-ui** (the React frontend) is structured, how it talks to **olo-be** (the Spring Boot API), and how it integrates with **olo-core** catalog and **olo-configuration** workflow presets.
 
 For contributor conventions (state flow, store rules, naming), see the repository root [ARCHITECTURE.md](../../docs/ARCHITECTURE.md). This document focuses on the frontend package and its immediate boundaries.

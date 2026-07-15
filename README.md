@@ -289,21 +289,17 @@ Start building AI workflows.
 
 ## Platform
 
-- docs/
+- [docs/](docs/)
 
-Architecture
-
-Deployment
-
-Environment
-
-Extensibility
-
-Performance
-
-Testing
-
-Governance
+- [Contributor guide](CONTRIBUTING.md)
+- [Module owners and credit](docs/MODULE_OWNERS.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Domain boundaries](docs/DOMAIN_BOUNDARIES.md)
+- [Environment](docs/ENVIRONMENT.md)
+- [Extensibility](docs/EXTENSIBILITY.md)
+- [Performance](docs/PERFORMANCE.md)
+- [Testing](docs/TEST_STRATEGY.md)
+- [Stability](docs/STABILITY.md)
 
 ---
 
@@ -405,11 +401,11 @@ Current opportunities include:
 
 As a maintainer you'll help define the roadmap, review contributions, mentor the community and guide the evolution of your module.
 
-See:
+See [docs/MODULE_OWNERS.md](docs/MODULE_OWNERS.md).
 
-```
-docs/MODULE_OWNERS.md
-```
+## Contributor credit
+
+OLO credits contributors through PR notes, release notes, and module ownership records. Code, docs, tests, examples, reviews, design feedback and community support all count as project work. If you want to become a reviewer or owner, start with a focused contribution in one module and update the ownership map when your scope is clear.
 
 ---
 
@@ -439,9 +435,7 @@ Whether you're fixing your first issue or leading a module, we'd love to collabo
 
 Start with:
 
-```
-CONTRIBUTING.md
-```
+[CONTRIBUTING.md](CONTRIBUTING.md)
 
 Every contribution matters.
 

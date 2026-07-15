@@ -4,6 +4,10 @@ SPDX-License-Identifier: Apache-2.0
 -->
 # Olo — Contributor Architecture Guide
 
+## Contributor and owner notes
+
+Architecture contributors should preserve the domain boundaries described here before adding abstractions. Module owners should use this guide as the review baseline for frontend state, backend API shape, extension points, and cross-module changes. Credit substantial architecture stewardship in [MODULE_OWNERS.md](MODULE_OWNERS.md).
+
 This document is for contributors. It explains how the codebase is structured so you can add features without fighting the architecture.
 
 ---

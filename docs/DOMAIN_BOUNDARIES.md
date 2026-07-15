@@ -4,6 +4,10 @@ SPDX-License-Identifier: Apache-2.0
 -->
 # Domain boundaries
 
+## Contributor and owner notes
+
+Use this document when a change touches more than one domain store, API surface, or runtime concept. Contributors should explain the boundary they are changing in the PR; owners should review for coupling, migration safety, and contributor learnability. Ownership credit lives in [MODULE_OWNERS.md](MODULE_OWNERS.md).
+
 Domains are implemented as Zustand stores and own specific UI and data. To avoid circular logic and cognitive collapse, **domains may depend only on**:
 
 - **API layer** (`api/rest.ts` or equivalent)
